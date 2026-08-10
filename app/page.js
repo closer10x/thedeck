@@ -8,7 +8,16 @@ import IdleLock from '../components/IdleLock';
 // policies, so the tables are unreachable except through the service role —
 // which lives server-side, behind the PIN gate in middleware.js.
 async function api(path, options) {
-  const r = await fetch(path, options);
+  let r;
+  try {
+    r = await fetch(path, options);
+  } catch (e) {
+    // fetch rejects rather than resolving when the connection drops — a dev
+    // server restarting, a tab waking on a dead network. Returning the failure
+    // instead of throwing keeps every caller's await settling; an unhandled
+    // rejection here used to strand the roster on "Loading the deck…" forever.
+    return { error: e?.message || 'Could not reach the server.' };
+  }
   const out = await r.json().catch(() => ({}));
   if (!r.ok) return { error: out.error || `Request failed (${r.status})` };
   return out;
@@ -26,13 +35,18 @@ export default function Page() {
   const loadedOnce = useRef(false);
   const load = useCallback(async () => {
     if (!loadedOnce.current) setLoading(true);
-    const out = await api('/api/data');
-    // clear on success too, or one bad load leaves the banner up forever
-    setError(out.error || null);
-    setPeople(out.people || []);
-    setInvites(out.invites || []);
-    loadedOnce.current = true;
-    setLoading(false);
+    try {
+      const out = await api('/api/data');
+      // clear on success too, or one bad load leaves the banner up forever
+      setError(out.error || null);
+      setPeople(out.people || []);
+      setInvites(out.invites || []);
+    } finally {
+      // whatever went wrong, stop showing the spinner. A stuck `loading` looks
+      // exactly like a hung app and hides the error that would explain it.
+      loadedOnce.current = true;
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {

@@ -180,17 +180,17 @@ export default function Roster(props) {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-          {/* the chips scroll; the view toggle stays put. minWidth:0 so the
-              scroller is allowed to shrink instead of shoving the toggle off */}
+        {/* The toggle floats over the chips rather than taking a slot in the
+            row, so the sorts keep the full width and slide underneath it. */}
+        <div style={{ position: 'relative', marginTop: 10 }}>
           <div
             style={{
               display: 'flex',
               gap: 6,
-              flex: 1,
-              minWidth: 0,
               overflowX: 'auto',
               scrollbarWidth: 'none',
+              // room to scroll the last chip out from under the toggle
+              paddingRight: 84,
             }}
           >
             {SORTS.map((s) => {
@@ -218,13 +218,23 @@ export default function Roster(props) {
 
           <div
             style={{
+              position: 'absolute',
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 2,
               display: 'flex',
-              flexShrink: 0,
-              gap: 2,
-              padding: 2,
+              gap: 3,
+              padding: 3,
               borderRadius: 999,
-              border: `1px solid ${C.line}`,
-              background: C.canvas,
+              // real glass: chips pass underneath and stay visible through it,
+              // just blurred and lifted — no scrim wiping them out first
+              border: '1px solid rgba(255,255,255,0.55)',
+              background: 'rgba(255,255,255,0.5)',
+              backdropFilter: 'blur(16px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(16px) saturate(180%)',
+              boxShadow:
+                '0 8px 22px rgba(22,21,28,0.16), 0 1px 2px rgba(22,21,28,0.07), inset 0 1px 0 rgba(255,255,255,0.65)',
             }}
           >
             {[
@@ -242,12 +252,13 @@ export default function Roster(props) {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '5px 8px',
+                    padding: '6px 9px',
                     borderRadius: 999,
                     border: 'none',
-                    background: on ? C.surface : 'transparent',
-                    color: on ? C.accent : C.muted,
-                    boxShadow: on ? '0 1px 3px rgba(22,21,28,0.12)' : 'none',
+                    background: on ? C.accent : 'transparent',
+                    color: on ? '#fff' : C.muted,
+                    boxShadow: on ? '0 2px 8px rgba(75,59,224,0.42)' : 'none',
+                    transition: 'background 170ms ease, color 170ms ease, box-shadow 170ms ease',
                   }}
                 >
                   <Icon size={15} />
