@@ -267,6 +267,7 @@ export default function Roster(props) {
           onRemove={props.onRemovePerson}
           onLogInvite={props.onLogInvite}
           onSetOutcome={props.onSetOutcome}
+          onSetInviteNote={props.onSetInviteNote}
           onDeleteInvite={props.onDeleteInvite}
         />
       )}
@@ -322,7 +323,7 @@ function Row({ p, first, onOpen }) {
             <span
               title="In the rat chat"
               style={{
-                fontSize: 11,
+                fontSize: 9.5,
                 background: '#F1F0F5',
                 borderRadius: 5,
                 padding: '2px 5px',
@@ -401,7 +402,7 @@ function FormLine({ invites }) {
   const last = invites.slice(0, 5).reverse();
   if (!last.length) return null;
   return (
-    <span style={{ fontSize: 13, letterSpacing: 1, lineHeight: 1 }}>
+    <span style={{ fontSize: 10.5, letterSpacing: 1.5, lineHeight: 1 }}>
       {last.map((i) => OUTCOME_EMOJI[i.outcome] || OUTCOME_EMOJI.pending).join('')}
     </span>
   );

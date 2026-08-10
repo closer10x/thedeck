@@ -30,8 +30,11 @@ create table if not exists invites (
   invited_at timestamptz default now(),
   what text,                             -- "dinner", "beach day", etc
   outcome text default 'pending',        -- pending / yes / no / ghost
+  note text,                             -- why she said no, mostly
   created_at timestamptz default now()
 );
+
+alter table invites add column if not exists note text;
 
 create index if not exists invites_person_idx on invites(person_id, invited_at desc);
 

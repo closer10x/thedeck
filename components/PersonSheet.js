@@ -63,6 +63,7 @@ export default function PersonSheet({
   onRemove,
   onLogInvite,
   onSetOutcome,
+  onSetInviteNote,
   onDeleteInvite,
 }) {
   const [draft, setDraft] = useState(
@@ -579,6 +580,19 @@ export default function PersonSheet({
             }}
           >
             <Instagram size={15} color={C.accent} />@{draft.ig_handle}
+            {/* she's on the weekly re-pull — photos and avatar refresh on their own */}
+            <span
+              title="Refreshing from Instagram weekly"
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#12805C',
+                boxShadow: '0 0 0 2.5px rgba(18,128,92,0.16)',
+                flexShrink: 0,
+                marginLeft: 1,
+              }}
+            />
           </button>
         ) : (
         <div style={{ display: 'flex', gap: 8 }}>
@@ -1047,6 +1061,30 @@ export default function PersonSheet({
                         <Trash2 size={14} />
                       </button>
                     </div>
+
+                    {/* a "no" is worth a reason. stays visible for any outcome
+                        once written, so changing your mind doesn't hide it */}
+                    {(inv.outcome === 'no' || inv.note) && (
+                      <input
+                        defaultValue={inv.note || ''}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v !== (inv.note || '')) onSetInviteNote(inv.id, v);
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                        placeholder="Why not? (busy, not interested, bad timing…)"
+                        style={{
+                          width: '100%',
+                          marginTop: 9,
+                          padding: '8px 10px',
+                          borderRadius: 9,
+                          border: `1px solid ${C.line}`,
+                          background: '#fff',
+                          fontSize: 12.5,
+                          color: C.ink,
+                        }}
+                      />
+                    )}
                   </div>
                 );
               })}

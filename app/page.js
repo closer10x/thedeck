@@ -129,6 +129,15 @@ export default function Page() {
     if (error) setError(error.message);
   }
 
+  async function setInviteNote(inviteId, note) {
+    const { error } = await supabase
+      .from('invites')
+      .update({ note: note || null })
+      .eq('id', inviteId);
+    await load();
+    if (error) setError(error.message);
+  }
+
   async function deleteInvite(inviteId) {
     const { error } = await supabase.from('invites').delete().eq('id', inviteId);
     await load();
@@ -147,6 +156,7 @@ export default function Page() {
         onRemovePerson={removePerson}
         onLogInvite={logInvite}
         onSetOutcome={setOutcome}
+        onSetInviteNote={setInviteNote}
         onDeleteInvite={deleteInvite}
       />
     </>
