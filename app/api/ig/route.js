@@ -78,9 +78,15 @@ async function fetchProfile(handle, limit = 6) {
   // says "wait a few minutes" and clears on its own; everything else at those
   // codes is Instagram refusing to serve a logged-out server, which waiting
   // will never fix.
+  //
+  // The catch: logged out from a datacenter IP, "wait a few minutes" IS the
+  // refusal. Instagram says it to every request, every time, and no amount of
+  // waiting changes it — so without a session it's a wall wearing a throttle's
+  // wording, and repeating that wording just sends you off to wait for nothing.
+  // Only trust it once we're signed in, where it means what it says.
   if (r.status === 401 || r.status === 403 || r.status === 429) {
     const body = await r.text().catch(() => '');
-    const throttled = r.status === 429 || /wait a few minutes/i.test(body);
+    const throttled = SESSION && (r.status === 429 || /wait a few minutes/i.test(body));
     return { ...empty, status: throttled ? 'rate_limited' : 'blocked' };
   }
   if (!r.ok) return { ...empty, status: 'error' };

@@ -113,10 +113,14 @@ says so plainly instead of showing an empty grid, and it never overwrites photos
 already have with nothing.
 
 **Logged out, Instagram shows a datacenter IP a login wall**, which is what
-deployed pulls usually hit — the avatar still lands but the grid comes back empty.
-Set `IG_SESSIONID` to the `sessionid` cookie from a browser you're logged into and
-the grid works from the server too. Use a throwaway account: the cookie is that
-account's login, and it expires on sign-out.
+deployed pulls usually hit. Set `IG_SESSIONID` to the `sessionid` cookie from a
+browser you're logged into and the pull works from the server too. Use a throwaway
+account: the cookie is that account's login, and it expires on sign-out.
+
+The wall's tell is that it answers "please wait a few minutes" — the same words
+real throttling uses, except it says them to every request forever. So that
+wording is only believed when a session is set. Logged out it's reported as the
+block it is, because "try again shortly" is advice that never comes good.
 
 A pull that comes back empty is careful about saying why. "No account by that
 handle" only appears when something actually looked her up and didn't find her — a
