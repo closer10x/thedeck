@@ -208,16 +208,9 @@ export default function Roster(props) {
         )}
 
         {rows.length > 0 && (
-          <div
-            style={{
-              background: C.surface,
-              borderRadius: 16,
-              border: `1px solid ${C.line}`,
-              overflow: 'hidden',
-            }}
-          >
-            {rows.map((p, i) => (
-              <Row key={p.id} p={p} first={i === 0} onOpen={() => setOpenId(p.id)} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {rows.map((p) => (
+              <Card key={p.id} p={p} onOpen={() => setOpenId(p.id)} />
             ))}
           </div>
         )}

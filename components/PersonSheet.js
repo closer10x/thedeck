@@ -191,9 +191,15 @@ export default function PersonSheet({
   personIdRef.current = person?.id;
 
   // the sheet can unmount mid-write; the fetch still completes, but its state
-  // updates have nowhere to go
+  // updates have nowhere to go. Set on the way in as well as out: StrictMode
+  // mounts, unmounts and remounts, and a one-way flag would stay false.
   const alive = useRef(true);
-  useEffect(() => () => { alive.current = false; }, []);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   // Saves run one at a time. Two in flight at once would both see a null id and
   // both insert — that's how one person becomes five rows.
@@ -423,38 +429,38 @@ export default function PersonSheet({
         body: JSON.stringify({ input: handle }),
       });
       const data = await r.json();
-      // fill the name only if it's still blank — never overwrite what you typed
-      if (data.name && !(draft.name || '').trim()) set('name', data.name);
       const pulled = (data.posts || []).map((p) => ({ ...p, source: 'ig' }));
-      // her own grid replaces whatever was pulled before, but never the shots
-      // that were uploaded by hand
-      // no posts means throttled or locked, not "she deleted everything" —
-      // keep what's already there rather than clearing the grid
-      const nextPhotos = pulled.length
-        ? [...(draft.photos || []).filter((p) => p.source !== 'ig'), ...pulled].slice(0, 6)
-        : draft.photos || [];
-      if (pulled.length) set('photos', nextPhotos);
-      if (data.photo_url) {
-        set('photo_url', data.photo_url);
-        setIgOpen(false);
-      }
+      const got = pulled.length || data.photo_url;
 
-      // a pull is real work — persist it now rather than losing it if the sheet
-      // gets dismissed. only for someone already saved; a new person has no row
-      // yet and gets written when you hit Save.
-      if (person?.id && (pulled.length || data.photo_url)) {
-        onSave({
-          ...draft,
-          id: person.id,
+      // One update built from the live draft, not the one captured when this
+      // request started — a pull takes seconds, and anything typed meanwhile
+      // would otherwise be written back over.
+      setDraft((d) => {
+        // her grid replaces whatever was pulled before, but never the shots
+        // uploaded by hand. no posts means throttled or locked, not "she
+        // deleted everything", so keep what's already there.
+        const kept = (d.photos || []).filter((p) => p.source !== 'ig');
+        return {
+          ...d,
           ig_handle: handle,
-          photos: nextPhotos,
-          photo_url: data.photo_url || draft.photo_url,
-          photos_synced_at: new Date().toISOString(),
-        });
-      }
+          // fill the name only if it's still blank — never overwrite yours
+          name: (d.name || '').trim() ? d.name : data.name || d.name || '',
+          photos: pulled.length ? [...kept, ...pulled].slice(0, 6) : d.photos || [],
+          photo_url: data.photo_url || d.photo_url || '',
+          photos_synced_at: got ? new Date().toISOString() : d.photos_synced_at || null,
+        };
+      });
+
+      if (data.photo_url) setIgOpen(false);
       // the avatar and the grid come from different places, so say which half
       // fell over rather than leaving an empty grid with no explanation
       setPhotoMsg(gridMessage(data));
+
+      // A pull is real work — persist it now instead of waiting out the
+      // debounce. Goes through the same serialized path as every other write,
+      // so it can't race autosave into inserting her twice. Deferred a tick so
+      // the draft above has committed and flushPending reads the new values.
+      if (got) setTimeout(flushPending, 0);
     } catch {
       setPhotoMsg('Instagram did not answer. Add her photos yourself below.');
     }
