@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rolodeck — preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:#EDECF2;font-family:Inter,system-ui,sans-serif;color:#16151C;-webkit-font-smoothing:antialiased}
+  button{cursor:pointer;font:inherit;color:inherit}
+  input,textarea{font:inherit;color:inherit}
+  ::placeholder{color:#A9A7B3}
+  :focus-visible{outline:2px solid #4B3BE0;outline-offset:2px;border-radius:6px}
+  #phone{max-width:480px;margin:0 auto;min-height:100dvh;background:#F5F4F8;position:relative;padding-bottom:104px;box-shadow:0 0 60px rgba(22,21,28,.08)}
+  .chips::-webkit-scrollbar{display:none}
+  .spin{animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="phone">
+  <header style="position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #E9E8EF;padding:18px 16px 12px">
+    <div style="display:flex;align-items:baseline;justify-content:space-between">
+      <h1 style="margin:0;font-family:'Bricolage Grotesque',sans-serif;font-size:25px;letter-spacing:-.035em;font-weight:700">Rolodeck</h1>
+      <span id="count" style="font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#D6336C"></span>
+    </div>
+    <div style="position:relative;margin-top:12px">
+      <svg style="position:absolute;left:12px;top:12px;pointer-events:none" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#86848F" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      <input id="q" placeholder="Search name, handle, note" style="width:100%;padding:10px 12px 10px 34px;border-radius:11px;border:1px solid #E9E8EF;background:#F5F4F8;font-size:14.5px" />
+    </div>
+    <div class="chips" id="chips" style="display:flex;gap:6px;margin-top:10px;overflow-x:auto;scrollbar-width:none"></div>
+  </header>
+
+  <div style="padding:12px"><div id="list"></div></div>
+
+  <div style="position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;padding:12px 16px 16px;background:linear-gradient(to top,#F5F4F8 62%,rgba(245,244,248,0))">
+    <button id="add" style="width:100%;padding:14px 16px;border-radius:14px;border:none;background:#4B3BE0;color:#fff;font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 6px 20px rgba(75,59,224,.28)">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg> Add someone
+    </button>
+  </div>
+
+  <div id="sheet"></div>
+</div>
+
+<script>
+const TIERS={a:{label:'A',color:'#4B3BE0',bg:'#EEECFD'},b:{label:'B',color:'#12805C',bg:'#E7F5F0'},c:{label:'C',color:'#86848F',bg:'#F1F0F5'}};
+const EMOJI={yes:'\u2705',pending:'\u23F3',no:'\u274C',ghost:'\uD83D\uDC7B'};
+const OUTCOMES=[{id:'pending',label:'Waiting',color:'#8C8A96'},{id:'yes',label:'Yes',color:'#12805C'},{id:'no',label:'No',color:'#D6336C'},{id:'ghost',label:'Ghosted',color:'#A87400'}];
+const SORTS=[['cold','Coldest'],['recent','Just asked'],['most','Most asked'],['rate','Best rate'],['az','A–Z']];
+const ago=d=>new Date(Date.now()-d*864e5).toISOString();
+
+let people=[
+ {id:'1',name:'Camila R.',ig_handle:'cami.rz',photo_url:'',note:'Met at Vanguard. Pilates, hates loud bars.',tier:'a',rat_chat:true,
+  invites:[{id:'i1',invited_at:ago(4),what:'Sushi downtown',outcome:'yes'},{id:'i2',invited_at:ago(19),what:'Lake day',outcome:'yes'},{id:'i3',invited_at:ago(41),what:'Coffee',outcome:'no'}]},
+ {id:'2',name:'Bri',ig_handle:'brianna.k',photo_url:'',note:'Nurse, works nights — ask for Sundays.',tier:'b',rat_chat:false,
+  invites:[{id:'i4',invited_at:ago(11),what:'Dinner Thursday',outcome:'pending'},{id:'i5',invited_at:ago(33),what:'Beach',outcome:'yes'}]},
+ {id:'3',name:'Jasmine T.',ig_handle:'jazzt',photo_url:'',note:'Ivanhoe brunch crowd. Knows Dev.',tier:'a',rat_chat:true,
+  invites:[{id:'i6',invited_at:ago(38),what:'Padel Saturday',outcome:'ghost'},{id:'i7',invited_at:ago(70),what:'Drinks',outcome:'yes'}]},
+ {id:'4',name:'Alexa M.',ig_handle:'lexmarie',photo_url:'',note:'Realtor. Big on Winter Park spots.',tier:'b',rat_chat:false,
+  invites:[{id:'i8',invited_at:ago(74),what:'Dinner',outcome:'no'}]},
+ {id:'5',name:'Sam',ig_handle:'samanthaaa',photo_url:'',note:'From the boat day. Never actually asked out.',tier:'c',rat_chat:true,invites:[]},
+ {id:'6',name:'Nia',ig_handle:'niaaa.b',photo_url:'',note:'Grad student, free after 7.',tier:'b',rat_chat:false,
+  invites:[{id:'i9',invited_at:ago(2),what:'Coffee Tuesday',outcome:'pending'}]}
+];
+let q='',sort='cold',open=null,newDraft=null;
+
+const days=iso=>iso?Math.max(0,Math.floor((Date.now()-new Date(iso))/864e5)):null;
+function temp(d){if(d===null)return{color:'#8C8A96',bg:'#F1F0F5'};if(d<=7)return{color:'#12805C',bg:'#E7F5F0'};if(d<=21)return{color:'#A87400',bg:'#FBF3DE'};return{color:'#D6336C',bg:'#FCEBF1'}}
+const rate=iv=>iv.length?Math.round(iv.filter(i=>i.outcome==='yes').length/iv.length*100):null;
+const initials=n=>n.split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function avatar(p,size=44){
+  if(p.photo_url)return `<img src="${esc(p.photo_url)}" alt="" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid #E9E8EF">`;
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;flex-shrink:0;background:#EEECFD;border:1px solid #E9E8EF;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque',sans-serif;font-weight:600;font-size:${size*.36}px;color:#4B3BE0">${initials(p.name)||'?'}</div>`;
+}
+function formLine(iv){
+  const last=iv.slice().sort((a,b)=>new Date(a.invited_at)-new Date(b.invited_at)).slice(-5);
+  if(!last.length)return '';
+  return `<span style="font-size:13px;letter-spacing:1px;line-height:1">`+last.map(i=>EMOJI[i.outcome]||EMOJI.pending).join('')+`</span>`;
+}
+
+function rows(){
+  let l=people.map(p=>{const iv=p.invites.slice().sort((a,b)=>new Date(b.invited_at)-new Date(a.invited_at));
+    const last=iv[0]?.invited_at||null;return{...p,invites:iv,count:iv.length,days:days(last),rate:rate(iv)}});
+  if(q.trim()){const n=q.toLowerCase();l=l.filter(p=>[p.name,p.ig_handle,p.note].join(' ').toLowerCase().includes(n))}
+  const B=99999,s={cold:(a,b)=>(b.days??B)-(a.days??B),recent:(a,b)=>(a.days??B)-(b.days??B),most:(a,b)=>b.count-a.count,rate:(a,b)=>(b.rate??-1)-(a.rate??-1),az:(a,b)=>a.name.localeCompare(b.name)};
+  return l.sort(s[sort]);
+}
+
+function render(){
+  const r=rows(),owed=r.filter(p=>p.days===null||p.days>21).length;
+  document.getElementById('count').textContent=`${r.length} on deck · ${owed} owed`;
+  document.getElementById('chips').innerHTML=SORTS.map(([id,label])=>{
+    const on=id===sort;return `<button data-sort="${id}" style="flex-shrink:0;padding:6px 11px;border-radius:999px;border:1px solid ${on?'#4B3BE0':'#E9E8EF'};background:${on?'#4B3BE0':'#fff'};color:${on?'#fff':'#86848F'};font-size:12.5px;font-weight:500">${label}</button>`}).join('');
+
+  const list=document.getElementById('list');
+  if(!r.length){list.innerHTML=`<div style="background:#fff;border:1px solid #E9E8EF;border-radius:16px;padding:38px 20px;text-align:center;color:#86848F;font-size:14px">No one matches that.</div>`;return}
+  list.innerHTML=`<div style="background:#fff;border-radius:16px;border:1px solid #E9E8EF;overflow:hidden">`+r.map((p,i)=>{
+    const t=temp(p.days),tier=TIERS[p.tier];
+    return `<button data-id="${p.id}" style="display:flex;gap:13px;align-items:center;width:100%;padding:16px 14px;background:transparent;border:none;${i?'border-top:1px solid #EFEEF4;':''}text-align:left">
+      <span style="width:4px;align-self:stretch;border-radius:2px;background:${t.color};opacity:${p.days===null?.45:1};flex-shrink:0"></span>
+      ${avatar(p,50)}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="font-family:'Bricolage Grotesque',sans-serif;font-size:17px;font-weight:600;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;color:${tier.color};background:${tier.bg};padding:2px 6px;border-radius:5px;flex-shrink:0">${tier.label}</span>
+          ${p.rat_chat?`<span title="In the rat chat" style="font-size:11px;background:#F1F0F5;border-radius:5px;padding:2px 5px;flex-shrink:0;line-height:1.2">\uD83D\uDC00</span>`:''}
+        </div>
+        <div style="font-size:13.5px;color:#5E5C6B;line-height:1.35;margin:5px 0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.note)||'@'+esc(p.ig_handle)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${formLine(p.invites)}
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#8C8A96">${p.count?p.count+(p.count===1?' ask':' asks')+' · '+p.rate+'% yes':'Never asked'}</span>
+        </div>
+      </div>
+      <div style="flex-shrink:0;text-align:center;min-width:54px;padding:7px 6px;border-radius:10px;background:${t.bg}">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:${p.days===null?12:17}px;font-weight:600;line-height:1;color:${t.color}">${p.days===null?'—':p.days}</div>
+        <div style="font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:${t.color};opacity:.8;margin-top:4px">${p.days===null?'new':'days'}</div>
+      </div>
+    </button>`}).join('')+`</div>`;
+}
+
+const inputS="width:100%;padding:11px 12px;border-radius:11px;border:1px solid #E9E8EF;background:#F7F6FA;font-size:14px";
+const labelS="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#A9A7B3;margin:20px 0 8px";
+
+function renderSheet(){
+  const el=document.getElementById('sheet');
+  if(!open){el.innerHTML='';return}
+  const isNew=open==='new';
+  if(isNew&&!newDraft)newDraft={id:null,name:'',ig_handle:'',photo_url:'',note:'',tier:'b',rat_chat:false,invites:[]};
+  const p=isNew?newDraft:people.find(x=>x.id===open);
+  const iv=p.invites.slice().sort((a,b)=>new Date(b.invited_at)-new Date(a.invited_at));
+  el.innerHTML=`<div id="scrim" style="position:fixed;inset:0;background:rgba(22,21,28,.32);z-index:20;display:flex;align-items:flex-end;justify-content:center">
+    <div id="card" style="width:100%;max-width:480px;max-height:92dvh;overflow-y:auto;background:#fff;border-radius:20px 20px 0 0;padding:10px 16px 24px">
+      <div style="display:flex;justify-content:center;padding:4px 0 12px"><div style="width:38px;height:4px;border-radius:2px;background:#E9E8EF"></div></div>
+      <div style="display:flex;align-items:center;gap:13px">
+        <button id="pickphoto" aria-label="Change photo" style="position:relative;border:none;background:transparent;padding:0;line-height:0;flex-shrink:0">
+          ${avatar(p,62)}
+          <span style="position:absolute;right:-2px;bottom:-2px;width:23px;height:23px;border-radius:50%;background:#fff;border:1px solid #E9E8EF;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(22,21,28,.12)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4B3BE0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3"/></svg>
+          </span>
+        </button>
+        <input id="filepick" type="file" accept="image/*" style="display:none" />
+        <input id="f-name" value="${esc(p.name)}" placeholder="Name" style="flex:1;border:none;background:transparent;font-family:'Bricolage Grotesque',sans-serif;font-size:22px;font-weight:700;letter-spacing:-.03em;padding:0" />
+        <button id="close" style="border:none;background:transparent;color:#86848F;padding:4px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+      </div>
+
+      <div style="font-size:12px;color:#86848F;margin-top:8px">Tap the photo to upload one from your phone.${p.photo_url?` <button id="rmphoto" style="border:none;background:transparent;color:#D6336C;font-size:12px;padding:0;text-decoration:underline">Remove photo</button>`:''}</div>
+
+      <div style="${labelS}">Instagram</div>
+      <div style="display:flex;gap:8px">
+        <input id="f-ig" value="${p.ig_handle?'@'+esc(p.ig_handle):''}" placeholder="Paste her profile link" style="${inputS}" />
+        <button id="pull" style="padding:0 14px;border-radius:11px;border:1px solid #4B3BE0;background:#EEECFD;color:#4B3BE0;font-size:13.5px;font-weight:600;white-space:nowrap">Get photo</button>
+      </div>
+      <div id="photomsg" style="font-size:12px;color:#C98A00;margin-top:6px"></div>
+      <input id="f-photo" value="${esc(p.photo_url)}" placeholder="or paste a photo link" style="${inputS};margin-top:8px;font-size:13px" />
+
+      <div style="${labelS}">Mark</div>
+      <div style="display:flex;gap:8px">
+        ${Object.entries(TIERS).map(([id,t])=>{const on=p.tier===id;
+          return `<button data-tier="${id}" style="flex:1;padding:10px 0;border-radius:11px;border:1px solid ${on?t.color:'#E9E8EF'};background:${on?t.bg:'#fff'};color:${on?t.color:'#86848F'};font-weight:600;font-size:14px">${t.label}</button>`}).join('')}
+      </div>
+
+      <div style="${labelS}">Rat Chat</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:14.5px;flex:1">\uD83D\uDC00 In the rat chat?</span>
+        ${[[1,'Yes','#12805C','#E7F5F0'],[0,'No','#5E5C6B','#F1F0F5']].map(([v,label,color,bg])=>{const on=(!!p.rat_chat)===(!!v);
+          return `<button data-rat="${v}" style="min-width:66px;padding:9px 0;border-radius:11px;border:1px solid ${on?color:'#E9E8EF'};background:${on?bg:'#fff'};color:${on?color:'#86848F'};font-weight:600;font-size:14px">${label}</button>`}).join('')}
+      </div>
+
+      <div style="${labelS}">Note</div>
+      <textarea id="f-note" rows="3" placeholder="Where you met, what she's into, what to bring up next time" style="${inputS};resize:none;line-height:1.45">${esc(p.note)}</textarea>
+
+      ${isNew?'':`<div style="${labelS}">Invites</div>
+      <div style="display:flex;gap:8px">
+        <input id="f-what" placeholder="Dinner Thursday, beach day…" style="${inputS}" />
+        <button id="logask" style="padding:0 14px;border-radius:11px;border:none;background:#4B3BE0;color:#fff;font-size:13.5px;font-weight:600;white-space:nowrap">Log ask</button>
+      </div>
+      <div style="margin-top:10px">${iv.length?iv.map(i=>`
+        <div style="padding:10px 0;border-top:1px solid #F0EFF4">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13.5px">${esc(i.what)||'Asked out'}</span>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#86848F">${new Date(i.invited_at).toLocaleDateString(undefined,{month:'short',day:'numeric'})}</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:7px">${OUTCOMES.map(o=>{const on=i.outcome===o.id;
+            return `<button data-inv="${i.id}" data-out="${o.id}" style="padding:4px 9px;border-radius:999px;border:1px solid ${on?o.color:'#E9E8EF'};background:${on?o.color:'#fff'};color:${on?'#fff':'#86848F'};font-size:12px">${EMOJI[o.id]} ${o.label}</button>`}).join('')}</div>
+        </div>`).join(''):`<div style="font-size:13px;color:#86848F;padding:8px 0">Never asked. That's the whole point of the list.</div>`}</div>`}
+
+      <button id="save" style="width:100%;margin-top:22px;padding:14px 0;border-radius:14px;border:none;background:#16151C;color:#fff;font-size:15px;font-weight:600">Save</button>
+      ${isNew?'':`<button id="remove" style="width:100%;margin-top:8px;padding:12px 0;border-radius:14px;border:1px solid #E9E8EF;background:#fff;color:#D6336C;font-size:14px">Remove from deck</button>`}
+    </div></div>`;
+
+  const card=document.getElementById('card');
+  const sync=()=>{p.name=document.getElementById('f-name').value;
+    p.ig_handle=document.getElementById('f-ig').value.replace(/^@/,'').trim();
+    p.photo_url=document.getElementById('f-photo').value.trim();
+    p.note=document.getElementById('f-note').value;};
+  document.getElementById('scrim').onclick=e=>{if(e.target.id==='scrim'){open=null;newDraft=null;renderSheet()}};
+  document.getElementById('close').onclick=()=>{open=null;newDraft=null;renderSheet()};
+  card.querySelectorAll('[data-tier]').forEach(b=>b.onclick=()=>{sync();p.tier=b.dataset.tier;renderSheet()});
+  card.querySelectorAll('[data-rat]').forEach(b=>b.onclick=()=>{sync();p.rat_chat=b.dataset.rat==='1';renderSheet();render()});
+  const fp=document.getElementById('filepick');
+  document.getElementById('pickphoto').onclick=()=>fp.click();
+  fp.onchange=e=>{const f=e.target.files[0];if(!f)return;
+    const rd=new FileReader();rd.onload=()=>{sync();p.photo_url=rd.result;renderSheet();render()};rd.readAsDataURL(f)};
+  const rmp=document.getElementById('rmphoto');
+  if(rmp)rmp.onclick=()=>{sync();p.photo_url='';renderSheet();render()};
+  document.getElementById('pull').onclick=()=>{
+    const v=document.getElementById('f-ig').value.trim();
+    document.getElementById('photomsg').textContent=v?'Preview only — the real app fetches this from Instagram.':'Paste an Instagram link or @handle.';
+  };
+  const ask=document.getElementById('logask');
+  if(ask)ask.onclick=()=>{sync();const w=document.getElementById('f-what').value.trim();
+    p.invites.push({id:'n'+Date.now(),invited_at:new Date().toISOString(),what:w,outcome:'pending'});renderSheet();render()};
+  card.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>{
+    sync();const t=p.invites.find(x=>x.id===b.dataset.inv);t.outcome=b.dataset.out;renderSheet();render()});
+  document.getElementById('save').onclick=()=>{
+    p.name=document.getElementById('f-name').value.trim()||'Untitled';
+    p.ig_handle=document.getElementById('f-ig').value.replace(/^@/,'').trim();
+    p.photo_url=document.getElementById('f-photo').value.trim();
+    p.note=document.getElementById('f-note').value.trim();
+    if(isNew){p.id='n'+Date.now();people.push(p);newDraft=null}
+    open=null;renderSheet();render()};
+  const rm=document.getElementById('remove');
+  if(rm)rm.onclick=()=>{people=people.filter(x=>x.id!==p.id);open=null;renderSheet();render()};
+}
+
+document.getElementById('q').oninput=e=>{q=e.target.value;render()};
+document.getElementById('chips').onclick=e=>{const b=e.target.closest('[data-sort]');if(b){sort=b.dataset.sort;render()}};
+document.getElementById('list').onclick=e=>{const b=e.target.closest('[data-id]');if(b){open=b.dataset.id;renderSheet()}};
+document.getElementById('add').onclick=()=>{open='new';newDraft=null;renderSheet()};
+render();
+</script>
+</body>
+</html>

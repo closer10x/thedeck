@@ -1,0 +1,17 @@
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  background: #F5F4F8;
+  color: #16151C;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+input, textarea, button, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid #4B3BE0; outline-offset: 2px; border-radius: 6px; }
+::placeholder { color: #A9A7B3; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+.spin { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
