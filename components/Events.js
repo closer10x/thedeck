@@ -6,11 +6,11 @@ import Avatar from './Avatar';
 import { STATUSES } from './EventSheet';
 
 const C = {
-  surface: '#FFFFFF',
-  ink: '#16151C',
-  muted: '#86848F',
-  line: '#E9E8EF',
-  accent: '#4B3BE0',
+  surface: 'var(--surface)',
+  ink: 'var(--ink)',
+  muted: 'var(--muted)',
+  line: 'var(--line)',
+  accent: 'var(--accent)',
 };
 
 const BY_ID = Object.fromEntries(STATUSES.map((s) => [s.id, s]));
@@ -165,7 +165,7 @@ function Card({ event, past, onOpen }) {
               fontSize: 10.5,
               fontWeight: 600,
               color: past ? C.muted : C.accent,
-              background: past ? '#F1F0F5' : '#EEECFD',
+              background: past ? 'var(--tint)' : 'var(--accent-tint)',
               borderRadius: 8,
               padding: '3px 7px',
             }}
@@ -223,7 +223,7 @@ function Card({ event, past, onOpen }) {
                   height: 27,
                   borderRadius: '50%',
                   border: '2px solid #fff',
-                  background: '#EEECFD',
+                  background: 'var(--accent-tint)',
                   color: C.accent,
                   fontSize: 10.5,
                   fontWeight: 700,
@@ -253,7 +253,7 @@ function Empty({ text, children }) {
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'var(--surface)',
         border: `1px solid ${C.line}`,
         borderRadius: 16,
         padding: '38px 22px',

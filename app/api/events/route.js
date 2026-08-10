@@ -10,6 +10,27 @@ const NO_STORE = { 'cache-control': 'no-store, max-age=0' };
 const LOGGED = ['name', 'at', 'place', 'note'];
 const LABELS = { name: 'name', at: 'date', place: 'place', note: 'note' };
 
+// The sheet offers a day, never a time, so two timestamps on the same day mean
+// the same thing. Comparing the raw values instead turned re-saving an
+// untouched date — which the date input does the moment it round-trips through
+// the picker — into "Jon updated the date", for a date nobody had changed.
+function sameDay(a, b) {
+  if (!a || !b) return !a && !b;
+  const day = (v) => {
+    const d = new Date(v);
+    return `${d.getUTCFullYear()}-${d.getUTCMonth()}-${d.getUTCDate()}`;
+  };
+  return day(a) === day(b);
+}
+
+function eventChanges(before, row) {
+  return LOGGED.filter((f) =>
+    f === 'at'
+      ? !sameDay(before.at, row.at)
+      : JSON.stringify(before[f] ?? null) !== JSON.stringify(row[f] ?? null)
+  );
+}
+
 // the table not existing yet is a setup step, not a fault — see supabase/events.sql
 function isMissing(message) {
   return /relation .*(events|event_people).* does not exist|schema cache/i.test(message || '');
@@ -91,7 +112,7 @@ export async function POST(req) {
   }
 
   if (before) {
-    const changed = changedFields(before, row, LOGGED);
+    const changed = eventChanges(before, row);
     if (changed.length) {
       const renamed = changed.includes('name');
       await logActivity(req, {

@@ -1,15 +1,186 @@
+/* The palette, in one place. Components reference these rather than hex, so
+   there is exactly one definition of "the card colour" and night mode is a
+   second set of values rather than a second set of components. */
+:root {
+  --canvas: #F5F4F8;      /* the page behind everything */
+  --surface: #FFFFFF;     /* cards, sheets, menus */
+  --sunken: #FAF9FC;      /* a card inside a card: asks, guests */
+  --field: #F7F6FA;       /* inputs */
+  --segment: #EDECF2;     /* the Deck/Events track */
+
+  --ink: #16151C;         /* body text */
+  --muted: #86848F;       /* secondary text */
+  --muted-2: #6E6C78;     /* secondary text that needs a bit more weight */
+  --label: #A9A7B3;       /* field labels, placeholders */
+  --faint: #C9C7D2;       /* icons you shouldn't notice until you want them */
+
+  --line: #E9E8EF;        /* borders */
+  --hairline: #EFEEF4;    /* row dividers, lighter than a border */
+  --dot: #D8D6E2;         /* an empty PIN dot */
+  --grabber: #B9B7C6;     /* the sheet handle, while dragged */
+
+  --accent: #4B3BE0;
+  --accent-tint: #EEECFD;
+  --accent-glow: rgba(75, 59, 224, 0.28);
+  --accent-ring: rgba(75, 59, 224, 0.45);
+
+  --good: #12805C;
+  --good-tint: #E7F5F0;
+  --warn: #A87400;
+  --warn-tint: #FBF3DE;
+  --warn-ink: #7A5A00;
+  --warn-line: #F0DFB4;
+  --warn-text: #C98A00;
+  --bad: #D6336C;
+  --bad-tint: #FCEBF1;
+  --bad-panel: #FDF6F9;
+  --bad-line: #F3D3DF;
+
+  --scrim: rgba(22, 21, 28, 0.32);   /* behind a sheet */
+  --shadow: rgba(22, 21, 28, 0.12);
+  --shadow-lift: rgba(22, 21, 28, 0.16);
+
+  /* the glass panes: light catching the top edge of a white surface */
+  --glass-a: rgba(255, 255, 255, 0.58);
+  --glass-b: rgba(255, 255, 255, 0.34);
+  --glass-lit: rgba(255, 255, 255, 0.9);
+  --glass-bevel: rgba(255, 255, 255, 0.28);
+  --glass-edge: rgba(255, 255, 255, 0.55);
+  --glass-fill: rgba(255, 255, 255, 0.5);
+  --glass-brightness: 1.08;
+  --glass-solid: #ffffff;
+  color-scheme: light;
+}
+
+/* Night. Not the light theme inverted: surfaces lift off the canvas rather
+   than sinking into it, the accent is lightened so it still reads against a
+   dark card, and the tints are dark washes of their hue instead of pastels
+   — a pastel chip on a dark card glares. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --canvas: #0E0D12;
+    --surface: #17161D;
+    --sunken: #1B1A22;
+    --field: #1D1C25;
+    --segment: #201F28;
+
+    --ink: #EDECF2;
+    --muted: #96949F;
+    --muted-2: #A8A6B2;
+    --label: #6E6C7A;
+    --faint: #4A4856;
+
+    --line: #262530;
+    --hairline: #232230;
+    --dot: #3A3844;
+    --grabber: #4A4856;
+
+    --accent: #8E7DFF;
+    --accent-tint: #23204A;
+    --accent-glow: rgba(142, 125, 255, 0.30);
+    --accent-ring: rgba(142, 125, 255, 0.45);
+
+    --good: #3BC08D;
+    --good-tint: #102E23;
+    --warn: #E0A422;
+    --warn-tint: #33280F;
+    --warn-ink: #E8C97A;
+    --warn-line: #4A3A16;
+    --warn-text: #E0A422;
+    --bad: #FF6B9A;
+    --bad-tint: #3A1526;
+    --bad-panel: #241019;
+    --bad-line: #4A1E30;
+
+    --scrim: rgba(0, 0, 0, 0.55);
+    --shadow: rgba(0, 0, 0, 0.5);
+    --shadow-lift: rgba(0, 0, 0, 0.6);
+
+    --glass-a: rgba(38, 37, 48, 0.72);
+    --glass-b: rgba(23, 22, 29, 0.55);
+    --glass-lit: rgba(255, 255, 255, 0.10);
+    --glass-bevel: rgba(255, 255, 255, 0.04);
+    --glass-edge: rgba(255, 255, 255, 0.10);
+    --glass-fill: rgba(38, 37, 48, 0.6);
+    --glass-brightness: 0.9;
+    --glass-solid: #17161D;
+    --picker-filter: invert(1) opacity(0.75);
+    color-scheme: dark;
+  }
+}
+
+/* Chosen explicitly from the menu, which beats whatever the system says. */
+:root[data-theme='dark'] {
+  --canvas: #0E0D12;
+  --surface: #17161D;
+  --sunken: #1B1A22;
+  --field: #1D1C25;
+  --segment: #201F28;
+
+  --ink: #EDECF2;
+  --muted: #96949F;
+  --muted-2: #A8A6B2;
+  --label: #6E6C7A;
+  --faint: #4A4856;
+
+  --line: #262530;
+  --hairline: #232230;
+  --dot: #3A3844;
+  --grabber: #4A4856;
+
+  --accent: #8E7DFF;
+  --accent-tint: #23204A;
+  --accent-glow: rgba(142, 125, 255, 0.30);
+  --accent-ring: rgba(142, 125, 255, 0.45);
+
+  --good: #3BC08D;
+  --good-tint: #102E23;
+  --warn: #E0A422;
+  --warn-tint: #33280F;
+  --warn-ink: #E8C97A;
+  --warn-line: #4A3A16;
+  --warn-text: #E0A422;
+  --bad: #FF6B9A;
+  --bad-tint: #3A1526;
+  --bad-panel: #241019;
+  --bad-line: #4A1E30;
+
+  --scrim: rgba(0, 0, 0, 0.55);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --shadow-lift: rgba(0, 0, 0, 0.6);
+
+  --glass-a: rgba(38, 37, 48, 0.72);
+  --glass-b: rgba(23, 22, 29, 0.55);
+  --glass-lit: rgba(255, 255, 255, 0.10);
+  --glass-bevel: rgba(255, 255, 255, 0.04);
+  --glass-edge: rgba(255, 255, 255, 0.10);
+  --glass-fill: rgba(38, 37, 48, 0.6);
+  --glass-brightness: 0.9;
+  --glass-solid: #17161D;
+  --picker-filter: invert(1) opacity(0.75);
+  color-scheme: dark;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  background: #F5F4F8;
-  color: #16151C;
+  background: var(--canvas);
+  color: var(--ink);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
 input, textarea, button, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: 2px solid #4B3BE0; outline-offset: 2px; border-radius: 6px; }
-::placeholder { color: #A9A7B3; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+::placeholder { color: var(--label); }
+
+/* The date picker's calendar glyph is drawn by the browser, not by us, and
+   stays black on a dark field. `color-scheme` handles most native chrome;
+   this catches the one bit it doesn't. */
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: var(--picker-filter, none);
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
@@ -25,34 +196,27 @@ button { cursor: pointer; }
   /* A gradient rather than a flat tint: real glass catches more light at the
      top edge and thins out toward the middle. Flat translucency reads as a
      dimmed panel; the falloff is what makes it look like a pane. */
-  background: linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.58),
-    rgba(255, 255, 255, 0.34)
-  );
+  background: linear-gradient(to bottom, var(--glass-a), var(--glass-b));
   /* brightness lifts what's underneath so the blur doesn't turn to grey mud,
-     saturate keeps the photos colourful through it */
-  -webkit-backdrop-filter: blur(30px) saturate(200%) brightness(1.08);
-  backdrop-filter: blur(30px) saturate(200%) brightness(1.08);
+     saturate keeps the photos colourful through it. At night it goes the other
+     way — the pane darkens what passes under it instead of lifting it. */
+  -webkit-backdrop-filter: blur(30px) saturate(200%) brightness(var(--glass-brightness));
+  backdrop-filter: blur(30px) saturate(200%) brightness(var(--glass-brightness));
   box-shadow:
     /* the lit top edge */
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 var(--glass-lit),
     /* a faint bevel down the inside so it has thickness */
-    inset 0 -1px 0 rgba(255, 255, 255, 0.28),
-    0 1px 24px rgba(22, 21, 28, 0.05);
+    inset 0 -1px 0 var(--glass-bevel),
+    0 1px 24px var(--shadow);
 }
 
 /* the bar at the bottom is lit from the other side */
 .glass-bottom {
-  background: linear-gradient(
-    to top,
-    rgba(255, 255, 255, 0.58),
-    rgba(255, 255, 255, 0.34)
-  );
+  background: linear-gradient(to top, var(--glass-a), var(--glass-b));
   box-shadow:
-    inset 0 -1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 -1px 24px rgba(22, 21, 28, 0.05);
+    inset 0 -1px 0 var(--glass-lit),
+    inset 0 1px 0 var(--glass-bevel),
+    0 -1px 24px var(--shadow);
 }
 
 /* Firefox, and Safari with "Reduce transparency" on, have no backdrop-filter.
@@ -60,5 +224,5 @@ button { cursor: pointer; }
    whatever scrolled under it, so go opaque instead. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass,
-  .glass-bottom { background: #ffffff; }
+  .glass-bottom { background: var(--glass-solid); }
 }

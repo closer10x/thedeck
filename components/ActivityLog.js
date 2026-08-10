@@ -20,39 +20,39 @@ import {
 import { ago, initials } from '../lib/format';
 
 const C = {
-  surface: '#FFFFFF',
-  ink: '#16151C',
-  muted: '#86848F',
-  line: '#E9E8EF',
-  accent: '#4B3BE0',
-  bad: '#D6336C',
+  surface: 'var(--surface)',
+  ink: 'var(--ink)',
+  muted: 'var(--muted)',
+  line: 'var(--line)',
+  accent: 'var(--accent)',
+  bad: 'var(--bad)',
 };
 
 // Each kind of entry gets a glyph and a colour, so the feed can be skimmed for
 // "what happened" before any of it is actually read.
 const LOOK = {
-  'person.add': { Icon: UserPlus, color: '#12805C', bg: '#E7F5F0' },
-  'person.update': { Icon: Pencil, color: '#4B3BE0', bg: '#EEECFD' },
-  'person.remove': { Icon: Trash2, color: C.bad, bg: '#FCEBF1' },
-  'person.archive': { Icon: Archive, color: '#A87400', bg: '#FBF3DE' },
-  'person.unarchive': { Icon: ArchiveRestore, color: '#12805C', bg: '#E7F5F0' },
-  'ask.add': { Icon: Send, color: '#4B3BE0', bg: '#EEECFD' },
-  'ask.outcome': { Icon: CheckCircle2, color: '#12805C', bg: '#E7F5F0' },
-  'ask.note': { Icon: MessageSquare, color: '#86848F', bg: '#F1F0F5' },
-  'ask.remove': { Icon: Trash2, color: C.bad, bg: '#FCEBF1' },
-  'event.add': { Icon: CalendarPlus, color: '#12805C', bg: '#E7F5F0' },
-  'event.update': { Icon: CalendarDays, color: '#4B3BE0', bg: '#EEECFD' },
-  'event.remove': { Icon: Trash2, color: C.bad, bg: '#FCEBF1' },
-  'event.guest.add': { Icon: UserPlus, color: '#4B3BE0', bg: '#EEECFD' },
-  'event.guest.status': { Icon: CheckCircle2, color: '#12805C', bg: '#E7F5F0' },
-  'event.guest.remove': { Icon: Trash2, color: C.bad, bg: '#FCEBF1' },
-  'photo.add': { Icon: ImagePlus, color: '#4B3BE0', bg: '#EEECFD' },
-  'photo.avatar': { Icon: ImagePlus, color: '#4B3BE0', bg: '#EEECFD' },
-  'session.unlock': { Icon: LogIn, color: '#86848F', bg: '#F1F0F5' },
-  'session.lock': { Icon: Lock, color: '#86848F', bg: '#F1F0F5' },
+  'person.add': { Icon: UserPlus, color: 'var(--good)', bg: 'var(--good-tint)' },
+  'person.update': { Icon: Pencil, color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  'person.remove': { Icon: Trash2, color: C.bad, bg: 'var(--bad-tint)' },
+  'person.archive': { Icon: Archive, color: 'var(--warn)', bg: 'var(--warn-tint)' },
+  'person.unarchive': { Icon: ArchiveRestore, color: 'var(--good)', bg: 'var(--good-tint)' },
+  'ask.add': { Icon: Send, color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  'ask.outcome': { Icon: CheckCircle2, color: 'var(--good)', bg: 'var(--good-tint)' },
+  'ask.note': { Icon: MessageSquare, color: 'var(--muted)', bg: 'var(--tint)' },
+  'ask.remove': { Icon: Trash2, color: C.bad, bg: 'var(--bad-tint)' },
+  'event.add': { Icon: CalendarPlus, color: 'var(--good)', bg: 'var(--good-tint)' },
+  'event.update': { Icon: CalendarDays, color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  'event.remove': { Icon: Trash2, color: C.bad, bg: 'var(--bad-tint)' },
+  'event.guest.add': { Icon: UserPlus, color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  'event.guest.status': { Icon: CheckCircle2, color: 'var(--good)', bg: 'var(--good-tint)' },
+  'event.guest.remove': { Icon: Trash2, color: C.bad, bg: 'var(--bad-tint)' },
+  'photo.add': { Icon: ImagePlus, color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  'photo.avatar': { Icon: ImagePlus, color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  'session.unlock': { Icon: LogIn, color: 'var(--muted)', bg: 'var(--tint)' },
+  'session.lock': { Icon: Lock, color: 'var(--muted)', bg: 'var(--tint)' },
 };
 
-const FALLBACK = { Icon: Pencil, color: '#86848F', bg: '#F1F0F5' };
+const FALLBACK = { Icon: Pencil, color: 'var(--muted)', bg: 'var(--tint)' };
 
 function dayLabel(iso) {
   const d = new Date(iso);
@@ -153,7 +153,7 @@ export default function ActivityLog({ personId = null, title = 'Activity', onClo
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(22,21,28,0.32)',
+        background: 'var(--scrim)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         zIndex: 30,
@@ -219,7 +219,7 @@ export default function ActivityLog({ personId = null, title = 'Activity', onClo
                         borderRadius: 999,
                         border: `1px solid ${on ? C.accent : C.line}`,
                         background: on ? C.accent : C.surface,
-                        color: on ? '#fff' : C.muted,
+                        color: on ? 'var(--surface)' : C.muted,
                         fontSize: 12.5,
                         fontWeight: 500,
                       }}
@@ -238,7 +238,7 @@ export default function ActivityLog({ personId = null, title = 'Activity', onClo
                     borderRadius: 999,
                     border: `1px solid ${showSessions ? C.accent : C.line}`,
                     background: showSessions ? C.accent : C.surface,
-                    color: showSessions ? '#fff' : C.muted,
+                    color: showSessions ? 'var(--surface)' : C.muted,
                     fontSize: 12.5,
                     fontWeight: 500,
                   }}
@@ -358,10 +358,10 @@ function Entry({ entry }) {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              background: '#F1F0F5',
+              background: 'var(--tint)',
               borderRadius: 6,
               padding: '2px 6px',
-              color: '#5F5D6B',
+              color: 'var(--muted-2)',
             }}
           >
             <span style={{ fontWeight: 700, fontSize: 9.5 }}>{initials(entry.actor) || '?'}</span>

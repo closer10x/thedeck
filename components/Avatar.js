@@ -9,7 +9,7 @@ export default function Avatar({ name, url, size = 44 }) {
     borderRadius: '50%',
     flexShrink: 0,
     objectFit: 'cover',
-    background: '#EEECFD',
+    background: 'var(--accent-tint)',
     border: '1px solid #E9E8EF',
   };
   if (url) return <img src={url} alt="" style={s} />;
@@ -23,7 +23,7 @@ export default function Avatar({ name, url, size = 44 }) {
         fontFamily: 'var(--display), sans-serif',
         fontWeight: 600,
         fontSize: size * 0.36,
-        color: '#4B3BE0',
+        color: 'var(--accent)',
         letterSpacing: '-0.02em',
       }}
     >

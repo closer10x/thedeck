@@ -4,18 +4,18 @@ import { useMemo } from 'react';
 import { OUTCOME_EMOJI } from '../lib/format';
 
 const C = {
-  surface: '#FFFFFF',
-  ink: '#16151C',
-  muted: '#86848F',
-  line: '#E9E8EF',
-  accent: '#4B3BE0',
+  surface: 'var(--surface)',
+  ink: 'var(--ink)',
+  muted: 'var(--muted)',
+  line: 'var(--line)',
+  accent: 'var(--accent)',
 };
 
 const BARS = [
-  { id: 'yes', label: 'Yes', color: '#12805C' },
-  { id: 'pending', label: 'Waiting', color: '#8C8A96' },
-  { id: 'no', label: 'No', color: '#D6336C' },
-  { id: 'ghost', label: 'Ghosted', color: '#A87400' },
+  { id: 'yes', label: 'Yes', color: 'var(--good)' },
+  { id: 'pending', label: 'Waiting', color: 'var(--muted)' },
+  { id: 'no', label: 'No', color: 'var(--bad)' },
+  { id: 'ghost', label: 'Ghosted', color: 'var(--warn)' },
 ];
 
 // 12 weeks of asks, oldest first — enough to see a streak or a drought
@@ -72,9 +72,9 @@ export default function Stats({ rows, invites }) {
         <Tile
           label="Hit rate"
           value={s.hitRate === null ? '—' : `${s.hitRate}%`}
-          tint={s.hitRate !== null && s.hitRate >= 50 ? '#12805C' : undefined}
+          tint={s.hitRate !== null && s.hitRate >= 50 ? 'var(--good)' : undefined}
         />
-        <Tile label="Gone cold" value={s.cold} tint={s.cold ? '#D6336C' : undefined} />
+        <Tile label="Gone cold" value={s.cold} tint={s.cold ? 'var(--bad)' : undefined} />
         <Tile label="Typical gap" value={s.median === null ? '—' : `${s.median}d`} />
         <Tile label="Waiting" value={s.counts.pending} />
       </div>
@@ -128,7 +128,7 @@ export default function Stats({ rows, invites }) {
               flex: 1,
               height: `${Math.max(6, (n / peak) * 100)}%`,
               borderRadius: 3,
-              background: n ? C.accent : '#EFEEF4',
+              background: n ? C.accent : 'var(--hairline)',
               opacity: n ? 0.35 + 0.65 * (n / peak) : 1,
             }}
           />
@@ -164,7 +164,7 @@ function Tile({ label, value, tint }) {
   return (
     <div
       style={{
-        background: '#FAF9FC',
+        background: 'var(--sunken)',
         border: `1px solid ${C.line}`,
         borderRadius: 11,
         padding: '9px 10px',

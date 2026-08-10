@@ -19,13 +19,13 @@ import ActivityLog from './ActivityLog';
 import { STATUSES } from './EventSheet';
 import { parseHandle, formatUSPhone, OUTCOME_EMOJI } from '../lib/format';
 
-const C = { ink: '#16151C', muted: '#86848F', line: '#E9E8EF', accent: '#4B3BE0' };
+const C = { ink: 'var(--ink)', muted: 'var(--muted)', line: 'var(--line)', accent: 'var(--accent)' };
 
 const OUTCOMES = [
-  { id: 'pending', label: 'Waiting', color: '#6E6C78', bg: '#F1F0F5' },
-  { id: 'yes', label: 'Yes', color: '#12805C', bg: '#E7F5F0' },
-  { id: 'no', label: 'No', color: '#D6336C', bg: '#FCEBF1' },
-  { id: 'ghost', label: 'Ghosted', color: '#A87400', bg: '#FBF3DE' },
+  { id: 'pending', label: 'Waiting', color: 'var(--muted-2)', bg: 'var(--tint)' },
+  { id: 'yes', label: 'Yes', color: 'var(--good)', bg: 'var(--good-tint)' },
+  { id: 'no', label: 'No', color: 'var(--bad)', bg: 'var(--bad-tint)' },
+  { id: 'ghost', label: 'Ghosted', color: 'var(--warn)', bg: 'var(--warn-tint)' },
 ];
 
 // date inputs speak yyyy-mm-dd in local time; toISOString() would hand back
@@ -540,7 +540,7 @@ export default function PersonSheet({
           overscrollBehavior: 'contain',
           // pan-y so the sheet still scrolls; we only take over at the top
           touchAction: 'pan-y',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: '20px 20px 0 0',
           padding: '10px 16px calc(24px + env(safe-area-inset-bottom))',
           transform: `translateY(${sheetY})`,
@@ -566,7 +566,7 @@ export default function PersonSheet({
                 width: dragging ? 46 : 38,
                 height: 4,
                 borderRadius: 2,
-                background: dragging ? '#B9B7C6' : '#E9E8EF',
+                background: dragging ? 'var(--grabber)' : 'var(--line)',
                 transition: 'background 150ms, width 150ms',
               }}
             />
@@ -601,12 +601,12 @@ export default function PersonSheet({
                 width: 23,
                 height: 23,
                 borderRadius: '50%',
-                background: '#fff',
+                background: 'var(--surface)',
                 border: `1px solid ${C.line}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 1px 4px rgba(22,21,28,0.12)',
+                boxShadow: '0 1px 4px var(--shadow)',
               }}
             >
               {uploading ? (
@@ -664,7 +664,7 @@ export default function PersonSheet({
                 marginLeft: 8,
                 border: 'none',
                 background: 'transparent',
-                color: '#D6336C',
+                color: 'var(--bad)',
                 fontSize: 12,
                 padding: 0,
                 textDecoration: 'underline',
@@ -689,7 +689,7 @@ export default function PersonSheet({
               padding: '7px 11px 7px 8px',
               borderRadius: 999,
               border: `1px solid ${C.line}`,
-              background: '#F7F6FA',
+              background: 'var(--field)',
               color: C.ink,
               fontSize: 13,
               fontWeight: 600,
@@ -703,7 +703,7 @@ export default function PersonSheet({
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: '#12805C',
+                background: 'var(--good)',
                 boxShadow: '0 0 0 2.5px rgba(18,128,92,0.16)',
                 flexShrink: 0,
                 marginLeft: 1,
@@ -733,7 +733,7 @@ export default function PersonSheet({
               padding: '0 14px',
               borderRadius: 11,
               border: `1px solid ${C.accent}`,
-              background: '#EEECFD',
+              background: 'var(--accent-tint)',
               color: C.accent,
               fontSize: 13.5,
               fontWeight: 600,
@@ -744,7 +744,7 @@ export default function PersonSheet({
         </div>
         )}
         {photoMsg && (
-          <div style={{ fontSize: 12, color: '#C98A00', marginTop: 6 }}>{photoMsg}</div>
+          <div style={{ fontSize: 12, color: 'var(--warn-text)', marginTop: 6 }}>{photoMsg}</div>
         )}
 
         {/* her grid: pulled from Instagram, or filled by hand when there isn't
@@ -781,7 +781,7 @@ export default function PersonSheet({
                       width: '100%',
                       height: '100%',
                       objectFit: 'cover',
-                      background: '#F1F0F5',
+                      background: 'var(--tint)',
                     }}
                   />
                 </Tile>
@@ -806,7 +806,7 @@ export default function PersonSheet({
                     alignItems: 'center',
                     justifyContent: 'center',
                     background: 'rgba(22,21,28,0.62)',
-                    color: '#fff',
+                    color: 'var(--surface)',
                   }}
                 >
                   <X size={12} strokeWidth={2.6} />
@@ -825,7 +825,7 @@ export default function PersonSheet({
                 padding: 0,
                 border: `1.5px dashed #D8D6E2`,
                 borderRadius: 9,
-                background: '#F7F6FA',
+                background: 'var(--field)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -860,7 +860,7 @@ export default function PersonSheet({
               padding: '18px 0',
               border: `1.5px dashed #D8D6E2`,
               borderRadius: 12,
-              background: '#F7F6FA',
+              background: 'var(--field)',
               color: C.muted,
               fontSize: 12.5,
               fontWeight: 600,
@@ -913,8 +913,8 @@ export default function PersonSheet({
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 14.5, flex: 1 }}>{'\uD83D\uDC00'} In the rat chat?</span>
           {[
-            { v: true, label: 'Yes', color: '#12805C', bg: '#E7F5F0' },
-            { v: false, label: 'No', color: '#5E5C6B', bg: '#F1F0F5' },
+            { v: true, label: 'Yes', color: 'var(--good)', bg: 'var(--good-tint)' },
+            { v: false, label: 'No', color: 'var(--muted-2)', bg: 'var(--tint)' },
           ].map((o) => {
             const on = !!draft.rat_chat === o.v;
             return (
@@ -926,7 +926,7 @@ export default function PersonSheet({
                   padding: '9px 0',
                   borderRadius: 11,
                   border: `1px solid ${on ? o.color : C.line}`,
-                  background: on ? o.bg : '#fff',
+                  background: on ? o.bg : 'var(--surface)',
                   color: on ? o.color : C.muted,
                   fontWeight: 600,
                   fontSize: 14,
@@ -991,11 +991,11 @@ export default function PersonSheet({
                       right: 0,
                       marginTop: 4,
                       zIndex: 3,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       border: `1px solid ${C.line}`,
                       borderRadius: 11,
                       overflow: 'hidden',
-                      boxShadow: '0 8px 24px rgba(22,21,28,0.12)',
+                      boxShadow: '0 8px 24px var(--shadow)',
                     }}
                   >
                     {places.map((s, i) => (
@@ -1015,7 +1015,7 @@ export default function PersonSheet({
                           padding: '9px 12px',
                           border: 'none',
                           borderTop: i ? `1px solid #F0EFF4` : 'none',
-                          background: '#fff',
+                          background: 'var(--surface)',
                         }}
                       >
                         <span style={{ fontSize: 13.5, color: C.ink }}>{s.main}</span>
@@ -1052,7 +1052,7 @@ export default function PersonSheet({
                   padding: '0 11px',
                   borderRadius: 11,
                   border: `1px solid ${showDate ? C.accent : C.line}`,
-                  background: showDate ? '#EEECFD' : '#F7F6FA',
+                  background: showDate ? 'var(--accent-tint)' : 'var(--field)',
                   color: showDate ? C.accent : C.muted,
                   display: 'flex',
                   alignItems: 'center',
@@ -1068,7 +1068,7 @@ export default function PersonSheet({
                   borderRadius: 11,
                   border: 'none',
                   background: C.accent,
-                  color: '#fff',
+                  color: 'var(--surface)',
                   fontSize: 13.5,
                   fontWeight: 600,
                   whiteSpace: 'nowrap',
@@ -1088,7 +1088,7 @@ export default function PersonSheet({
               />
             )}
             {placesMsg && (
-              <div style={{ fontSize: 11.5, color: '#C98A00', marginTop: 6 }}>{placesMsg}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--warn-text)', marginTop: 6 }}>{placesMsg}</div>
             )}
 
             <div style={{ marginTop: 10 }}>
@@ -1102,7 +1102,7 @@ export default function PersonSheet({
                   <div
                     key={inv.id}
                     style={{
-                      background: '#FAF9FC',
+                      background: 'var(--sunken)',
                       border: `1px solid ${C.line}`,
                       borderRadius: 13,
                       padding: '11px 12px',
@@ -1135,7 +1135,7 @@ export default function PersonSheet({
                           fontSize: 10.5,
                           letterSpacing: '0.04em',
                           color: C.muted,
-                          background: '#fff',
+                          background: 'var(--surface)',
                           border: `1px solid ${C.line}`,
                           borderRadius: 7,
                           padding: '3px 7px',
@@ -1204,7 +1204,7 @@ export default function PersonSheet({
                           marginLeft: 'auto',
                           border: 'none',
                           background: 'transparent',
-                          color: '#C9C7D2',
+                          color: 'var(--faint)',
                           padding: 2,
                           display: 'flex',
                         }}
@@ -1230,7 +1230,7 @@ export default function PersonSheet({
                           padding: '8px 10px',
                           borderRadius: 9,
                           border: `1px solid ${C.line}`,
-                          background: '#fff',
+                          background: 'var(--surface)',
                           fontSize: 12.5,
                           color: C.ink,
                         }}
@@ -1254,8 +1254,8 @@ export default function PersonSheet({
               padding: '14px 0',
               borderRadius: 14,
               border: 'none',
-              background: (draft.name || '').trim() ? C.accent : '#E4E2EC',
-              color: (draft.name || '').trim() ? '#fff' : '#9A98A6',
+              background: (draft.name || '').trim() ? C.accent : 'var(--line)',
+              color: (draft.name || '').trim() ? 'var(--surface)' : 'var(--muted)',
               fontSize: 15,
               fontWeight: 600,
               display: 'flex',
@@ -1278,7 +1278,7 @@ export default function PersonSheet({
         )}
 
         {saveMsg && (
-          <div style={{ fontSize: 12.5, color: '#D6336C', marginTop: 14, textAlign: 'center' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--bad)', marginTop: 14, textAlign: 'center' }}>
             {saveMsg}
           </div>
         )}
@@ -1291,7 +1291,7 @@ export default function PersonSheet({
             marginTop: 16,
             minHeight: 16,
             fontSize: 12,
-            color: saveState === 'error' ? '#D6336C' : C.muted,
+            color: saveState === 'error' ? 'var(--bad)' : C.muted,
             opacity: saveState === 'idle' ? 0 : 1,
             transition: 'opacity 200ms',
           }}
@@ -1325,7 +1325,7 @@ export default function PersonSheet({
                   gap: 9,
                   width: '100%',
                   textAlign: 'left',
-                  background: '#FAF9FC',
+                  background: 'var(--sunken)',
                   border: `1px solid ${C.line}`,
                   borderRadius: 13,
                   padding: '10px 12px',
@@ -1386,8 +1386,8 @@ export default function PersonSheet({
               padding: '12px 0',
               borderRadius: 14,
               border: `1px solid ${C.line}`,
-              background: '#fff',
-              color: '#D6336C',
+              background: 'var(--surface)',
+              color: 'var(--bad)',
               fontSize: 14,
               fontWeight: 500,
             }}
@@ -1403,10 +1403,10 @@ export default function PersonSheet({
               padding: 14,
               borderRadius: 14,
               border: '1px solid #F5C2D3',
-              background: '#FDF5F8',
+              background: 'var(--bad-panel)',
             }}
           >
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: '#D6336C' }}>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--bad)' }}>
               Remove {person.name || 'her'}?
             </div>
             <div style={{ fontSize: 12.5, color: C.muted, marginTop: 4, lineHeight: 1.45 }}>
@@ -1426,14 +1426,14 @@ export default function PersonSheet({
                 style={{
                   ...inputStyle,
                   marginTop: 10,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   textAlign: 'center',
                   letterSpacing: '0.3em',
                 }}
               />
             )}
             {removeMsg && (
-              <div style={{ fontSize: 12, color: '#D6336C', marginTop: 6 }}>{removeMsg}</div>
+              <div style={{ fontSize: 12, color: 'var(--bad)', marginTop: 6 }}>{removeMsg}</div>
             )}
 
             <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
@@ -1448,7 +1448,7 @@ export default function PersonSheet({
                   padding: '11px 0',
                   borderRadius: 12,
                   border: `1px solid ${C.line}`,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   color: C.ink,
                   fontSize: 13.5,
                   fontWeight: 600,
@@ -1464,8 +1464,8 @@ export default function PersonSheet({
                   padding: '11px 0',
                   borderRadius: 12,
                   border: 'none',
-                  background: '#D6336C',
-                  color: '#fff',
+                  background: 'var(--bad)',
+                  color: 'var(--surface)',
                   fontSize: 13.5,
                   fontWeight: 600,
                 }}
@@ -1496,7 +1496,7 @@ const inputStyle = {
   padding: '11px 12px',
   borderRadius: 11,
   border: '1px solid #E9E8EF',
-  background: '#F7F6FA',
+  background: 'var(--field)',
   fontSize: 14,
 };
 
@@ -1508,7 +1508,7 @@ function Label({ children }) {
         fontSize: 10,
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
-        color: '#A9A7B3',
+        color: 'var(--label)',
         margin: '20px 0 8px',
       }}
     >

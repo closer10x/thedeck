@@ -6,13 +6,13 @@ import { Delete } from 'lucide-react';
 import Mark from '../../components/Mark';
 
 const C = {
-  canvas: '#F5F4F8',
-  surface: '#FFFFFF',
-  ink: '#16151C',
-  muted: '#86848F',
-  line: '#E9E8EF',
-  accent: '#4B3BE0',
-  bad: '#D6336C',
+  canvas: 'var(--canvas)',
+  surface: 'var(--surface)',
+  ink: 'var(--ink)',
+  muted: 'var(--muted)',
+  line: 'var(--line)',
+  accent: 'var(--accent)',
+  bad: 'var(--bad)',
 };
 
 const LENGTH = 4;
@@ -116,7 +116,7 @@ export default function LockPage() {
       <style>{`
         @keyframes pinPop   { 0% { transform: scale(.4); opacity: .3 } 60% { transform: scale(1.25) } 100% { transform: scale(1); opacity: 1 } }
         @keyframes pinShake { 0%,100% { transform: translateX(0) } 15% { transform: translateX(-9px) } 30% { transform: translateX(9px) } 45% { transform: translateX(-6px) } 60% { transform: translateX(6px) } 80% { transform: translateX(-2px) } }
-        @keyframes pinGlow  { 0% { box-shadow: 0 0 0 0 rgba(75,59,224,.45) } 100% { box-shadow: 0 0 0 16px rgba(75,59,224,0) } }
+        @keyframes pinGlow  { 0% { box-shadow: 0 0 0 0 var(--accent-ring) } 100% { box-shadow: 0 0 0 16px rgba(142,125,255,0) } }
         @keyframes markIn   { 0% { transform: scale(.7) rotate(-8deg); opacity: 0 } 100% { transform: scale(1) rotate(0); opacity: 1 } }
         @keyframes sayHi { 0% { transform: translateY(5px); opacity: 0 } 100% { transform: none; opacity: 1 } }
         .pin-say { animation: sayHi 240ms cubic-bezier(.2,.9,.3,1.2) both; }
@@ -136,7 +136,7 @@ export default function LockPage() {
           width: 46,
           height: 46,
           borderRadius: 14,
-          background: '#EEECFD',
+          background: 'var(--accent-tint)',
           color: C.accent,
           animation: 'markIn 420ms cubic-bezier(.2,.9,.3,1.2) both',
         }}
@@ -210,7 +210,7 @@ export default function LockPage() {
                 height: 18,
                 borderRadius: '50%',
                 background: filled ? color : 'transparent',
-                border: `2px solid ${filled ? color : '#D8D6E2'}`,
+                border: `2px solid ${filled ? color : 'var(--dot)'}`,
                 animation: filled
                   ? `pinPop 260ms cubic-bezier(.2,.9,.3,1.4)${
                       state === 'ok' ? `, pinGlow 420ms ease-out ${i * 45}ms` : ''
@@ -260,7 +260,7 @@ export default function LockPage() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: k === 'del' ? 'none' : '0 2px 6px rgba(22,21,28,0.06)',
+                boxShadow: k === 'del' ? 'none' : '0 2px 6px var(--shadow)',
               }}
             >
               {k === 'del' ? <Delete size={26} /> : k}

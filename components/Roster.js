@@ -2,7 +2,18 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Plus, ChevronDown, LayoutGrid, Rows3, History, LogOut } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  ChevronDown,
+  LayoutGrid,
+  Rows3,
+  History,
+  LogOut,
+  Sun,
+  Moon,
+  SunMoon,
+} from 'lucide-react';
 import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
 import Events from './Events';
@@ -21,12 +32,12 @@ const SORTS = [
 ];
 
 const C = {
-  canvas: '#F5F4F8',
-  surface: '#FFFFFF',
-  ink: '#16151C',
-  muted: '#86848F',
-  line: '#E9E8EF',
-  accent: '#4B3BE0',
+  canvas: 'var(--canvas)',
+  surface: 'var(--surface)',
+  ink: 'var(--ink)',
+  muted: 'var(--muted)',
+  line: 'var(--line)',
+  accent: 'var(--accent)',
 };
 
 export default function Roster(props) {
@@ -60,6 +71,27 @@ export default function Roster(props) {
   function chooseView(v) {
     setView(v);
     localStorage.setItem('rolodeck_view', v);
+  }
+
+  // Light, dark, or whatever the phone is doing. Read after mount for the same
+  // reason as the view toggle — this page is prerendered, and seeding state
+  // from storage during render would hydrate against different markup. The
+  // *paint* is handled earlier than this, by the inline script in layout.js.
+  const [theme, setTheme] = useState('system');
+  useEffect(() => {
+    const saved = localStorage.getItem('rolodeck_theme');
+    if (saved === 'dark' || saved === 'light') setTheme(saved);
+  }, []);
+
+  function chooseTheme(next) {
+    setTheme(next);
+    if (next === 'system') {
+      localStorage.removeItem('rolodeck_theme');
+      delete document.documentElement.dataset.theme;
+    } else {
+      localStorage.setItem('rolodeck_theme', next);
+      document.documentElement.dataset.theme = next;
+    }
   }
 
   // Handing the phone to the other one of you: drop the cookie and go back to
@@ -165,7 +197,7 @@ export default function Roster(props) {
           position: 'sticky',
           top: 0,
           zIndex: 5,
-          borderBottom: '1px solid rgba(255,255,255,0.5)',
+          borderBottom: '1px solid var(--glass-fill)',
           padding: '18px 16px 12px',
         }}
       >
@@ -201,7 +233,7 @@ export default function Roster(props) {
                 fontSize: 10.5,
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                color: showStats ? C.accent : owed ? '#D6336C' : C.muted,
+                color: showStats ? C.accent : owed ? 'var(--bad)' : C.muted,
               }}
             >
               {rows.length} on deck · {owed} owed
@@ -229,8 +261,8 @@ export default function Roster(props) {
                     height: 32,
                     borderRadius: '50%',
                     border: `1px solid ${menuOpen ? C.accent : C.line}`,
-                    background: menuOpen ? C.accent : '#EEECFD',
-                    color: menuOpen ? '#fff' : C.accent,
+                    background: menuOpen ? C.accent : 'var(--accent-tint)',
+                    color: menuOpen ? 'var(--surface)' : C.accent,
                     fontFamily: 'var(--display), sans-serif',
                     fontSize: 12,
                     fontWeight: 700,
@@ -261,7 +293,7 @@ export default function Roster(props) {
                         background: C.surface,
                         border: `1px solid ${C.line}`,
                         borderRadius: 14,
-                        boxShadow: '0 12px 34px rgba(22,21,28,0.16)',
+                        boxShadow: '0 12px 34px var(--shadow-lift)',
                         overflow: 'hidden',
                       }}
                     >
@@ -284,6 +316,67 @@ export default function Roster(props) {
                           setShowLog(true);
                         }}
                       />
+
+                      {/* three states, not a switch: "follow the phone" is a
+                          real answer and the one most people want */}
+                      <div style={{ padding: '8px 10px 10px', borderTop: `1px solid ${C.line}` }}>
+                        <div
+                          style={{
+                            fontFamily: 'var(--mono), monospace',
+                            fontSize: 9.5,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            color: 'var(--label)',
+                            margin: '2px 3px 7px',
+                          }}
+                        >
+                          Appearance
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 2,
+                            padding: 3,
+                            borderRadius: 999,
+                            background: 'var(--segment)',
+                          }}
+                        >
+                          {[
+                            { id: 'light', Icon: Sun, label: 'Light' },
+                            { id: 'dark', Icon: Moon, label: 'Night' },
+                            { id: 'system', Icon: SunMoon, label: 'Auto' },
+                          ].map(({ id, Icon, label }) => {
+                            const on = theme === id;
+                            return (
+                              <button
+                                key={id}
+                                onClick={() => chooseTheme(id)}
+                                aria-pressed={on}
+                                title={label}
+                                style={{
+                                  flex: 1,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 4,
+                                  padding: '6px 0',
+                                  borderRadius: 999,
+                                  border: 'none',
+                                  background: on ? C.surface : 'transparent',
+                                  color: on ? C.ink : C.muted,
+                                  fontSize: 11,
+                                  fontWeight: on ? 650 : 500,
+                                  boxShadow: on ? '0 1px 3px var(--shadow)' : 'none',
+                                }}
+                              >
+                                <Icon size={12} />
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
                       <MenuItem Icon={LogOut} label="Sign out" danger onClick={signOut} />
                     </div>
                   </>
@@ -303,7 +396,7 @@ export default function Roster(props) {
             marginTop: 12,
             padding: 3,
             borderRadius: 999,
-            background: '#EDECF2',
+            background: 'var(--segment)',
           }}
         >
           {[
@@ -325,7 +418,7 @@ export default function Roster(props) {
                   color: on ? C.ink : C.muted,
                   fontSize: 13.5,
                   fontWeight: on ? 650 : 500,
-                  boxShadow: on ? '0 1px 3px rgba(22,21,28,0.14)' : 'none',
+                  boxShadow: on ? '0 1px 3px var(--shadow-lift)' : 'none',
                   transition: 'background 160ms ease, color 160ms ease',
                 }}
               >
@@ -397,7 +490,7 @@ export default function Roster(props) {
                     borderRadius: 999,
                     border: `1px solid ${on ? C.accent : C.line}`,
                     background: on ? C.accent : C.surface,
-                    color: on ? '#fff' : C.muted,
+                    color: on ? 'var(--surface)' : C.muted,
                     fontSize: 12.5,
                     fontWeight: 500,
                   }}
@@ -421,12 +514,12 @@ export default function Roster(props) {
               borderRadius: 999,
               // real glass: chips pass underneath and stay visible through it,
               // just blurred and lifted — no scrim wiping them out first
-              border: '1px solid rgba(255,255,255,0.55)',
-              background: 'rgba(255,255,255,0.5)',
+              border: '1px solid var(--glass-edge)',
+              background: 'var(--glass-fill)',
               backdropFilter: 'blur(16px) saturate(180%)',
               WebkitBackdropFilter: 'blur(16px) saturate(180%)',
               boxShadow:
-                '0 8px 22px rgba(22,21,28,0.16), 0 1px 2px rgba(22,21,28,0.07), inset 0 1px 0 rgba(255,255,255,0.65)',
+                '0 8px 22px var(--shadow-lift), 0 1px 2px var(--line), inset 0 1px 0 var(--glass-lit)',
             }}
           >
             {[
@@ -448,8 +541,8 @@ export default function Roster(props) {
                     borderRadius: 999,
                     border: 'none',
                     background: on ? C.accent : 'transparent',
-                    color: on ? '#fff' : C.muted,
-                    boxShadow: on ? '0 2px 8px rgba(75,59,224,0.42)' : 'none',
+                    color: on ? 'var(--surface)' : C.muted,
+                    boxShadow: on ? '0 2px 8px var(--accent-glow)' : 'none',
                     transition: 'background 170ms ease, color 170ms ease, box-shadow 170ms ease',
                   }}
                 >
@@ -471,14 +564,14 @@ export default function Roster(props) {
         {me?.legacy && (
           <div
             style={{
-              background: '#FBF3DE',
+              background: 'var(--warn-tint)',
               border: '1px solid #F0DFB4',
               borderRadius: 14,
               padding: '11px 13px',
               marginBottom: 12,
               fontSize: 12.5,
               lineHeight: 1.5,
-              color: '#7A5A00',
+              color: 'var(--warn-ink)',
             }}
           >
             Everything here is being logged as <strong>Owner</strong>. Set{' '}
@@ -541,7 +634,7 @@ export default function Roster(props) {
           padding: '12px 16px calc(16px + env(safe-area-inset-bottom))',
           // the gradient scrim this replaces faded the roster out behind it;
           // cards now stay visible through the bar, just blurred
-          borderTop: '1px solid rgba(255,255,255,0.5)',
+          borderTop: '1px solid var(--glass-fill)',
           maxWidth: 480,
           margin: '0 auto',
         }}
@@ -555,15 +648,15 @@ export default function Roster(props) {
             padding: '14px 16px',
             borderRadius: 14,
             border: 'none',
-            background: tab === 'events' && eventsState === 'missing' ? '#C9C7D2' : C.accent,
-            color: '#fff',
+            background: tab === 'events' && eventsState === 'missing' ? 'var(--faint)' : C.accent,
+            color: 'var(--surface)',
             fontSize: 15,
             fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: 8,
-            boxShadow: '0 6px 20px rgba(75,59,224,0.28)',
+            boxShadow: '0 6px 20px var(--accent-glow)',
           }}
         >
           <Plus size={17} /> {tab === 'deck' ? 'Add someone' : 'New event'}
@@ -623,7 +716,7 @@ function MenuItem({ Icon, label, onClick, danger }) {
         padding: '11px 13px',
         border: 'none',
         background: 'transparent',
-        color: danger ? '#D6336C' : C.ink,
+        color: danger ? 'var(--bad)' : C.ink,
         fontSize: 14,
         textAlign: 'left',
       }}
@@ -675,7 +768,7 @@ function Card({ p, onOpen }) {
               height: '100%',
               objectFit: 'cover',
               borderRadius: 12,
-              background: '#EEECFD',
+              background: 'var(--accent-tint)',
             }}
           />
         ) : (
@@ -684,7 +777,7 @@ function Card({ p, onOpen }) {
               width: '100%',
               height: '100%',
               borderRadius: 12,
-              background: '#EEECFD',
+              background: 'var(--accent-tint)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -712,7 +805,7 @@ function Card({ p, onOpen }) {
             fontSize: 10.5,
             fontWeight: 600,
             lineHeight: 1.3,
-            boxShadow: '0 1px 3px rgba(22,21,28,0.12)',
+            boxShadow: '0 1px 3px var(--shadow)',
           }}
         >
           {p.days === null ? 'new' : `${p.days}d`}
@@ -730,7 +823,7 @@ function Card({ p, onOpen }) {
               borderRadius: 7,
               padding: '2px 5px',
               lineHeight: 1.2,
-              boxShadow: '0 1px 3px rgba(22,21,28,0.12)',
+              boxShadow: '0 1px 3px var(--shadow)',
             }}
           >
             {'🐀'}
@@ -796,7 +889,7 @@ function Row({ p, first, onOpen }) {
               title="In the rat chat"
               style={{
                 fontSize: 9.5,
-                background: '#F1F0F5',
+                background: 'var(--tint)',
                 borderRadius: 5,
                 padding: '2px 5px',
                 flexShrink: 0,
@@ -818,7 +911,7 @@ function Row({ p, first, onOpen }) {
           style={{
             fontFamily: 'var(--mono), monospace',
             fontSize: 11,
-            color: '#8C8A96',
+            color: 'var(--muted)',
             marginTop: 4,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
@@ -884,12 +977,12 @@ function Empty({ text }) {
   return (
     <div
       style={{
-        background: '#fff',
+        background: 'var(--surface)',
         border: '1px solid #E9E8EF',
         borderRadius: 16,
         padding: '38px 20px',
         textAlign: 'center',
-        color: '#86848F',
+        color: 'var(--muted)',
         fontSize: 14,
       }}
     >

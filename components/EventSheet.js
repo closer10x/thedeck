@@ -5,15 +5,15 @@ import { X, Trash2, Plus, Search, MapPin, CalendarDays } from 'lucide-react';
 import Avatar from './Avatar';
 import { initials } from '../lib/format';
 
-const C = { ink: '#16151C', muted: '#86848F', line: '#E9E8EF', accent: '#4B3BE0' };
+const C = { ink: 'var(--ink)', muted: 'var(--muted)', line: 'var(--line)', accent: 'var(--accent)' };
 
 // Where each guest got to. Before the night: coming or maybe. Afterwards: did
 // she actually turn up — which is the part worth knowing next time.
 export const STATUSES = [
-  { id: 'coming', label: 'Coming', emoji: '🎟️', color: '#12805C', bg: '#E7F5F0' },
-  { id: 'maybe', label: 'Maybe', emoji: '🤔', color: '#A87400', bg: '#FBF3DE' },
-  { id: 'came', label: 'Came', emoji: '🎉', color: '#4B3BE0', bg: '#EEECFD' },
-  { id: 'noshow', label: 'No show', emoji: '👻', color: '#D6336C', bg: '#FCEBF1' },
+  { id: 'coming', label: 'Coming', emoji: '🎟️', color: 'var(--good)', bg: 'var(--good-tint)' },
+  { id: 'maybe', label: 'Maybe', emoji: '🤔', color: 'var(--warn)', bg: 'var(--warn-tint)' },
+  { id: 'came', label: 'Came', emoji: '🎉', color: 'var(--accent)', bg: 'var(--accent-tint)' },
+  { id: 'noshow', label: 'No show', emoji: '👻', color: 'var(--bad)', bg: 'var(--bad-tint)' },
 ];
 
 // date inputs speak yyyy-mm-dd in local time; toISOString() would hand back UTC
@@ -121,7 +121,7 @@ export default function EventSheet({
       style={{
         position: 'fixed',
         inset: 0,
-        background: 'rgba(22,21,28,0.32)',
+        background: 'var(--scrim)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
         zIndex: 20,
@@ -139,7 +139,7 @@ export default function EventSheet({
           maxHeight: '92dvh',
           overflowY: 'auto',
           overscrollBehavior: 'contain',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: '20px 20px 0 0',
           padding: '10px 16px calc(24px + env(safe-area-inset-bottom))',
           animation: 'evUp 300ms cubic-bezier(0.22, 1, 0.36, 1)',
@@ -217,10 +217,10 @@ export default function EventSheet({
                 right: 0,
                 zIndex: 3,
                 marginTop: 4,
-                background: '#fff',
+                background: 'var(--surface)',
                 border: `1px solid ${C.line}`,
                 borderRadius: 12,
-                boxShadow: '0 12px 30px rgba(22,21,28,0.14)',
+                boxShadow: '0 12px 30px var(--shadow-lift)',
                 overflow: 'hidden',
               }}
             >
@@ -263,7 +263,7 @@ export default function EventSheet({
 
         {!event ? (
           <>
-            {msg && <div style={{ fontSize: 12.5, color: '#D6336C', marginTop: 10 }}>{msg}</div>}
+            {msg && <div style={{ fontSize: 12.5, color: 'var(--bad)', marginTop: 10 }}>{msg}</div>}
             <button
               onClick={create}
               disabled={saving}
@@ -274,7 +274,7 @@ export default function EventSheet({
                 borderRadius: 14,
                 border: 'none',
                 background: C.accent,
-                color: '#fff',
+                color: 'var(--surface)',
                 fontSize: 15,
                 fontWeight: 600,
               }}
@@ -319,7 +319,7 @@ export default function EventSheet({
                   borderRadius: 14,
                   padding: 10,
                   marginBottom: 10,
-                  background: '#FAF9FC',
+                  background: 'var(--sunken)',
                 }}
               >
                 <div style={{ position: 'relative' }}>
@@ -333,7 +333,7 @@ export default function EventSheet({
                     onChange={(e) => setQ(e.target.value)}
                     placeholder="Search the deck"
                     autoFocus
-                    style={{ ...inputStyle, background: '#fff', paddingLeft: 32, padding: '9px 12px 9px 32px' }}
+                    style={{ ...inputStyle, background: 'var(--surface)', paddingLeft: 32, padding: '9px 12px 9px 32px' }}
                   />
                 </div>
 
@@ -369,8 +369,8 @@ export default function EventSheet({
                           style={{
                             fontFamily: 'var(--mono), monospace',
                             fontSize: 9.5,
-                            color: '#12805C',
-                            background: '#E7F5F0',
+                            color: 'var(--good)',
+                            background: 'var(--good-tint)',
                             borderRadius: 6,
                             padding: '2px 6px',
                           }}
@@ -397,7 +397,7 @@ export default function EventSheet({
                 <div
                   key={g.id}
                   style={{
-                    background: '#FAF9FC',
+                    background: 'var(--sunken)',
                     border: `1px solid ${C.line}`,
                     borderRadius: 13,
                     padding: '10px 11px',
@@ -423,7 +423,7 @@ export default function EventSheet({
                     <button
                       onClick={() => onRemoveGuest(g.id)}
                       aria-label={`Take ${person?.name || 'her'} off`}
-                      style={{ border: 'none', background: 'transparent', color: '#C9C7D2', padding: 2, display: 'flex' }}
+                      style={{ border: 'none', background: 'transparent', color: 'var(--faint)', padding: 2, display: 'flex' }}
                     >
                       <Trash2 size={14} />
                     </button>
@@ -497,8 +497,8 @@ export default function EventSheet({
                   padding: '12px 0',
                   borderRadius: 14,
                   border: `1px solid ${C.line}`,
-                  background: '#fff',
-                  color: '#D6336C',
+                  background: 'var(--surface)',
+                  color: 'var(--bad)',
                   fontSize: 14,
                   fontWeight: 500,
                 }}
@@ -510,7 +510,7 @@ export default function EventSheet({
                 style={{
                   marginTop: 12,
                   border: '1px solid #F3D3DF',
-                  background: '#FDF6F9',
+                  background: 'var(--bad-panel)',
                   borderRadius: 14,
                   padding: 13,
                 }}
@@ -528,7 +528,7 @@ export default function EventSheet({
                       padding: '11px 0',
                       borderRadius: 12,
                       border: `1px solid ${C.line}`,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       color: C.ink,
                       fontSize: 13.5,
                       fontWeight: 600,
@@ -546,8 +546,8 @@ export default function EventSheet({
                       padding: '11px 0',
                       borderRadius: 12,
                       border: 'none',
-                      background: '#D6336C',
-                      color: '#fff',
+                      background: 'var(--bad)',
+                      color: 'var(--surface)',
                       fontSize: 13.5,
                       fontWeight: 600,
                     }}
@@ -569,7 +569,7 @@ const inputStyle = {
   padding: '11px 12px',
   borderRadius: 11,
   border: '1px solid #E9E8EF',
-  background: '#F7F6FA',
+  background: 'var(--field)',
   fontSize: 14,
 };
 
@@ -581,7 +581,7 @@ function Label({ children }) {
         fontSize: 10,
         letterSpacing: '0.1em',
         textTransform: 'uppercase',
-        color: '#A9A7B3',
+        color: 'var(--label)',
         margin: '20px 0 8px',
       }}
     >
