@@ -58,6 +58,25 @@ That's deliberate: without it, both the app and `/api/upload` — which writes t
 Storage with the service role — would be wide open. Two people sharing a PIN, or
 a malformed `ROLODECK_USERS`, is refused the same way rather than guessed at.
 
+## Events
+
+A "yes" is supposed to turn into something. The **Events** tab — the other half
+of the pill under the title — is where it does: make an event, put people on it,
+and afterwards record who actually turned up.
+
+Each guest carries a status: **coming**, **maybe**, and then **came** or
+**no show** once the night has happened. That last pair is the part worth having
+— a yes that didn't show is not the same as a yes.
+
+The guest picker lists the deck with **whoever said yes most recently first**,
+tagged so you can see why she's at the top. Events with no date are legal and
+sort as upcoming; a plan without a day is still a plan. Everything is logged
+against the person as well as the event, so "Added Ashley C. to Rooftop dinner"
+shows up in her own history too, and her sheet lists what she's on.
+
+Existing databases need `supabase/events.sql` run once in the SQL editor. Until
+then the tab says so and refuses to make an event it couldn't save.
+
 ## The log
 
 Every write is recorded in the `activity` table under the name of whoever's PIN

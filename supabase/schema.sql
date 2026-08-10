@@ -44,6 +44,33 @@ create index if not exists invites_person_idx on invites(person_id, invited_at d
 alter table people add column if not exists created_by text;
 alter table invites add column if not exists created_by text;
 
+-- Events: the thing a "yes" turns into. An event has people on it, and each of
+-- them has a status — coming, maybe, and afterwards whether she turned up.
+create table if not exists events (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,                    -- "Rooftop dinner"
+  at timestamptz,                        -- null = someday, no date yet
+  place text,
+  note text,
+  created_at timestamptz default now(),
+  created_by text
+);
+
+create table if not exists event_people (
+  id uuid primary key default gen_random_uuid(),
+  event_id uuid references events(id) on delete cascade,
+  person_id uuid references people(id) on delete cascade,
+  status text default 'coming',          -- coming / maybe / came / noshow
+  created_at timestamptz default now(),
+  created_by text,
+  -- adding her twice is a mistake, not a second guest
+  unique (event_id, person_id)
+);
+
+create index if not exists events_at_idx on events(at desc nulls last);
+create index if not exists event_people_event_idx on event_people(event_id);
+create index if not exists event_people_person_idx on event_people(person_id);
+
 -- The log. Every write the app makes lands here, and nothing ever updates or
 -- deletes a row — an audit trail you can edit isn't one.
 create table if not exists activity (
@@ -70,6 +97,8 @@ create index if not exists activity_person_idx on activity(person_id, at desc);
 alter table people enable row level security;
 alter table invites enable row level security;
 alter table activity enable row level security;
+alter table events enable row level security;
+alter table event_people enable row level security;
 
 drop policy if exists "own rows" on people;
 drop policy if exists "own rows" on invites;

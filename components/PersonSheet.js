@@ -12,9 +12,11 @@ import {
   Plus,
   CalendarDays,
   History,
+  ChevronRight,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import ActivityLog from './ActivityLog';
+import { STATUSES } from './EventSheet';
 import { parseHandle, formatUSPhone, OUTCOME_EMOJI } from '../lib/format';
 
 const C = { ink: '#16151C', muted: '#86848F', line: '#E9E8EF', accent: '#4B3BE0' };
@@ -67,6 +69,9 @@ export default function PersonSheet({
   onSetOutcome,
   onSetInviteNote,
   onDeleteInvite,
+  events = [],
+  guests = [],
+  onOpenEvent,
 }) {
   const [draft, setDraft] = useState(
     person || {
@@ -488,6 +493,17 @@ export default function PersonSheet({
   }
 
   const invites = person?.invites || [];
+
+  // every event she's on, soonest first, with what she is on each
+  const herEvents = (guests || [])
+    .filter((g) => g.person_id === person?.id)
+    .map((guest) => ({
+      guest,
+      event: events.find((e) => e.id === guest.event_id),
+      status: STATUSES.find((s) => s.id === guest.status),
+    }))
+    .filter((x) => x.event)
+    .sort((a, b) => (a.event.at ? new Date(a.event.at) : Infinity) - (b.event.at ? new Date(b.event.at) : Infinity));
 
   return (
     <>
@@ -1293,6 +1309,56 @@ export default function PersonSheet({
             'Not saved'
           ) : null}
         </div>
+
+        {/* What the asks turned into. Read-only here — you put people on an
+            event from the event itself, where you can see who else is going. */}
+        {person && herEvents.length > 0 && (
+          <>
+            <Label>On the calendar</Label>
+            {herEvents.map(({ guest, event: ev, status }) => (
+              <button
+                key={guest.id}
+                onClick={() => onOpenEvent?.(ev.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  width: '100%',
+                  textAlign: 'left',
+                  background: '#FAF9FC',
+                  border: `1px solid ${C.line}`,
+                  borderRadius: 13,
+                  padding: '10px 12px',
+                  marginBottom: 7,
+                }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1 }}>{status?.emoji || '🎟️'}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 13.5,
+                      fontWeight: 550,
+                      color: C.ink,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {ev.name}
+                  </span>
+                  <span style={{ fontFamily: 'var(--mono), monospace', fontSize: 10.5, color: C.muted }}>
+                    {ev.at
+                      ? new Date(ev.at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                      : 'Someday'}
+                    {status ? ` · ${status.label}` : ''}
+                  </span>
+                </span>
+                <ChevronRight size={15} color="#C9C7D2" />
+              </button>
+            ))}
+          </>
+        )}
 
         {/* who put her on the deck. Blank for anyone added before the log
             existed, which is honest — nobody knows who that was. */}

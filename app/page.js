@@ -4,6 +4,11 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Roster from '../components/Roster';
 import IdleLock from '../components/IdleLock';
 
+// Events live behind their own tables and their own setup step, so they load
+// separately: the roster shouldn't wait on them, and a database without them
+// yet should still show you the deck.
+const EVENTS_UNSET = { events: [], guests: [], state: 'loading' };
+
 // Every call goes to our own server, never to Supabase. RLS is on with no
 // policies, so the tables are unreachable except through the service role —
 // which lives server-side, behind the PIN gate in middleware.js.
@@ -28,6 +33,7 @@ export default function Page() {
   const [invites, setInvites] = useState([]);
   // who's signed in — the roster load answers it, from the session cookie
   const [me, setMe] = useState(null);
+  const [ev, setEv] = useState(EVENTS_UNSET);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -53,9 +59,21 @@ export default function Page() {
     }
   }, []);
 
+  const loadEvents = useCallback(async () => {
+    const out = await api('/api/events');
+    setEv({
+      events: out.events || [],
+      guests: out.guests || [],
+      // `missing` is the tables not existing yet — a setup step, not a failure,
+      // and the Events tab explains it rather than showing a broken list
+      state: out.missing ? 'missing' : out.error ? 'error' : 'ready',
+    });
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadEvents();
+  }, [load, loadEvents]);
 
   // Instagram grids go stale — new posts, new profile pic. Re-pull anyone whose
   // last sync is over a week old, quietly, after the list is already on screen.
@@ -186,6 +204,53 @@ export default function Page() {
     [load]
   );
 
+  // Returns the new id so the sheet can swap from creating to editing, the same
+  // way savePerson does — you make an event, then put people on it.
+  const saveEvent = useCallback(
+    async (event) => {
+      const out = await api('/api/events', json(event));
+      await loadEvents();
+      return { error: out.error || null, id: out.id || event.id || null };
+    },
+    [loadEvents]
+  );
+
+  const removeEvent = useCallback(
+    async (id) => {
+      const out = await api(`/api/events?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadEvents();
+      if (out.error) setError(out.error);
+    },
+    [loadEvents]
+  );
+
+  const addGuest = useCallback(
+    async (eventId, personId) => {
+      const out = await api('/api/event-people', json({ event_id: eventId, person_id: personId }));
+      await loadEvents();
+      if (out.error) setError(out.error);
+    },
+    [loadEvents]
+  );
+
+  const setGuestStatus = useCallback(
+    async (id, status) => {
+      const out = await api('/api/event-people', { ...json({ id, status }), method: 'PATCH' });
+      await loadEvents();
+      if (out.error) setError(out.error);
+    },
+    [loadEvents]
+  );
+
+  const removeGuest = useCallback(
+    async (id) => {
+      const out = await api(`/api/event-people?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await loadEvents();
+      if (out.error) setError(out.error);
+    },
+    [loadEvents]
+  );
+
   return (
     <>
       <IdleLock />
@@ -201,6 +266,14 @@ export default function Page() {
         onSetOutcome={setOutcome}
         onSetInviteNote={setInviteNote}
         onDeleteInvite={deleteInvite}
+        events={ev.events}
+        guests={ev.guests}
+        eventsState={ev.state}
+        onSaveEvent={saveEvent}
+        onRemoveEvent={removeEvent}
+        onAddGuest={addGuest}
+        onSetGuestStatus={setGuestStatus}
+        onRemoveGuest={removeGuest}
       />
     </>
   );

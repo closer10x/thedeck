@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Search, Plus, ChevronDown, LayoutGrid, Rows3, History, LogOut } from 'lucide-react';
 import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
+import Events from './Events';
+import EventSheet from './EventSheet';
 import ActivityLog from './ActivityLog';
 import Stats from './Stats';
 import Mark from './Mark';
@@ -29,11 +31,15 @@ const C = {
 
 export default function Roster(props) {
   const { people, invites, loading, error, me } = props;
+  const { events = [], guests = [], eventsState = 'loading' } = props;
   const router = useRouter();
   const [q, setQ] = useState('');
   // who's signed in, and the log of what everyone's done
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLog, setShowLog] = useState(false);
+  // the deck is who you could ask; events are what came of it
+  const [tab, setTab] = useState('deck'); // 'deck' | 'events'
+  const [openEventId, setOpenEventId] = useState(null); // event id or 'new'
   const [sort, setSort] = useState('cold');
   // tucked away by default — the list is the point, the numbers are a peek
   const [showStats, setShowStats] = useState(false);
@@ -112,9 +118,35 @@ export default function Roster(props) {
     return list.sort(sorters[sort]);
   }, [people, invites, q, sort]);
 
+  // Everyone, with her asks attached and nothing filtered out. `rows` is
+  // narrowed by the deck's search box and drops archived people — fine for the
+  // list you're looking at, wrong for events: a guest would lose her face the
+  // moment you'd typed something into a search box on the other tab.
+  const everyone = useMemo(() => {
+    const byPerson = {};
+    for (const inv of invites) (byPerson[inv.person_id] ||= []).push(inv);
+    return people.map((p) => ({
+      ...p,
+      invites: (byPerson[p.id] || []).sort(
+        (a, b) => new Date(b.invited_at) - new Date(a.invited_at)
+      ),
+    }));
+  }, [people, invites]);
+
   const owed = rows.filter((r) => r.days === null || r.days > 21).length;
   // re-read her off the fresh rows every render so the invite list stays live
   const openPerson = openId && openId !== 'new' ? rows.find((r) => r.id === openId) : null;
+  const openEvent =
+    openEventId && openEventId !== 'new' ? events.find((e) => e.id === openEventId) : null;
+
+  // Creating an event and filling it are one motion. The sheet can't show a
+  // guest list until the event has an id, so the moment the insert returns one
+  // we point the sheet at it — the same sheet, now with people in it.
+  async function saveEventThenOpen(event) {
+    const res = await props.onSaveEvent(event);
+    if (!res?.error && res?.id && openEventId === 'new') setOpenEventId(res.id);
+    return res;
+  }
 
   return (
     <main
@@ -261,6 +293,64 @@ export default function Roster(props) {
           </div>
         </div>
 
+        {/* Two halves of the same thing: who you could ask, and what came of
+            it. The pill sits directly under the title so switching is the
+            first move available, not something buried in a menu. */}
+        <div
+          style={{
+            display: 'flex',
+            gap: 3,
+            marginTop: 12,
+            padding: 3,
+            borderRadius: 999,
+            background: '#EDECF2',
+          }}
+        >
+          {[
+            { id: 'deck', label: 'Deck', count: rows.length },
+            { id: 'events', label: 'Events', count: events.length },
+          ].map((t) => {
+            const on = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                aria-pressed={on}
+                style={{
+                  flex: 1,
+                  padding: '8px 0',
+                  borderRadius: 999,
+                  border: 'none',
+                  background: on ? C.surface : 'transparent',
+                  color: on ? C.ink : C.muted,
+                  fontSize: 13.5,
+                  fontWeight: on ? 650 : 500,
+                  boxShadow: on ? '0 1px 3px rgba(22,21,28,0.14)' : 'none',
+                  transition: 'background 160ms ease, color 160ms ease',
+                }}
+              >
+                {t.label}
+                {t.count > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 6,
+                      fontFamily: 'var(--mono), monospace',
+                      fontSize: 10.5,
+                      color: on ? C.accent : C.muted,
+                    }}
+                  >
+                    {t.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* searching and sorting are about the deck; the events list has its
+            own shape and neither applies to it */}
+        {tab === 'deck' && (
+          <>
         <div style={{ position: 'relative', marginTop: 12 }}>
           <Search
             size={15}
@@ -369,6 +459,8 @@ export default function Roster(props) {
             })}
           </div>
         </div>
+          </>
+        )}
       </header>
 
       {/* list */}
@@ -397,14 +489,25 @@ export default function Roster(props) {
             gets its own name.
           </div>
         )}
-        {showStats && !loading && !error && <Stats rows={rows} invites={invites} />}
-        {loading && <Empty text="Loading the deck…" />}
-        {error && <Empty text={`Couldn't load: ${error}`} />}
-        {!loading && !error && rows.length === 0 && (
+        {tab === 'events' && (
+          <Events
+            events={events}
+            guests={guests}
+            people={everyone}
+            state={eventsState}
+            onOpen={setOpenEventId}
+          />
+        )}
+
+        {tab === 'deck' && showStats && !loading && !error && <Stats rows={rows} invites={invites} />}
+        {tab === 'deck' && loading && <Empty text="Loading the deck…" />}
+        {tab === 'deck' && error && <Empty text={`Couldn't load: ${error}`} />}
+        {tab === 'deck' && !loading && !error && rows.length === 0 && (
           <Empty text={q ? 'No one matches that.' : 'Nobody on deck yet. Add someone below.'} />
         )}
 
-        {rows.length > 0 &&
+        {tab === 'deck' &&
+          rows.length > 0 &&
           (view === 'grid' ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {rows.map((p) => (
@@ -443,14 +546,16 @@ export default function Roster(props) {
           margin: '0 auto',
         }}
       >
+        {/* one button, and it does whatever the tab you're on is for */}
         <button
-          onClick={() => setOpenId('new')}
+          onClick={() => (tab === 'deck' ? setOpenId('new') : setOpenEventId('new'))}
+          disabled={tab === 'events' && eventsState === 'missing'}
           style={{
             width: '100%',
             padding: '14px 16px',
             borderRadius: 14,
             border: 'none',
-            background: C.accent,
+            background: tab === 'events' && eventsState === 'missing' ? '#C9C7D2' : C.accent,
             color: '#fff',
             fontSize: 15,
             fontWeight: 600,
@@ -461,7 +566,7 @@ export default function Roster(props) {
             boxShadow: '0 6px 20px rgba(75,59,224,0.28)',
           }}
         >
-          <Plus size={17} /> Add someone
+          <Plus size={17} /> {tab === 'deck' ? 'Add someone' : 'New event'}
         </button>
       </div>
 
@@ -476,6 +581,28 @@ export default function Roster(props) {
           onSetOutcome={props.onSetOutcome}
           onSetInviteNote={props.onSetInviteNote}
           onDeleteInvite={props.onDeleteInvite}
+          events={events}
+          guests={guests}
+          onOpenEvent={(id) => {
+            setOpenId(null);
+            setTab('events');
+            setOpenEventId(id);
+          }}
+        />
+      )}
+
+      {(openEventId === 'new' || openEvent) && (
+        <EventSheet
+          key={openEventId}
+          event={openEvent}
+          guests={guests}
+          people={everyone}
+          onClose={() => setOpenEventId(null)}
+          onSave={saveEventThenOpen}
+          onRemove={props.onRemoveEvent}
+          onAddGuest={props.onAddGuest}
+          onSetGuestStatus={props.onSetGuestStatus}
+          onRemoveGuest={props.onRemoveGuest}
         />
       )}
 
