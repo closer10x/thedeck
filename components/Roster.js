@@ -6,7 +6,7 @@ import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
 import Stats from './Stats';
 import Mark from './Mark';
-import { daysSince, temp, rate, OUTCOME_EMOJI } from '../lib/format';
+import { daysSince, temp, rate, initials, OUTCOME_EMOJI } from '../lib/format';
 
 const SORTS = [
   { id: 'cold', label: 'Coldest' },
@@ -276,6 +276,116 @@ function lastAsked(iso) {
   const opts = { month: 'short', day: 'numeric' };
   if (d.getFullYear() !== new Date().getFullYear()) opts.year = 'numeric';
   return d.toLocaleDateString(undefined, opts);
+}
+
+// Two to a row: her face and her name, nothing else. The day badge rides the
+// corner of the photo so the card stays a photo rather than a data row.
+function Card({ p, onOpen }) {
+  const t = temp(p.days);
+  return (
+    <button
+      onClick={onOpen}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: 10,
+        background: C.surface,
+        border: `1px solid ${C.line}`,
+        borderRadius: 16,
+        textAlign: 'center',
+      }}
+    >
+      <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1' }}>
+        {p.photo_url ? (
+          <img
+            src={p.photo_url}
+            alt=""
+            loading="lazy"
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              borderRadius: 12,
+              background: '#EEECFD',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: 12,
+              background: '#EEECFD',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontFamily: 'var(--display), sans-serif',
+              fontSize: 30,
+              fontWeight: 600,
+              color: C.accent,
+            }}
+          >
+            {initials(p.name) || '?'}
+          </div>
+        )}
+
+        <span
+          title={p.days === null ? 'Never asked' : `${p.days} days since the last ask`}
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            padding: '3px 7px',
+            borderRadius: 8,
+            background: t.bg,
+            color: t.color,
+            fontFamily: 'var(--mono), monospace',
+            fontSize: 10.5,
+            fontWeight: 600,
+            lineHeight: 1.3,
+            boxShadow: '0 1px 3px rgba(22,21,28,0.12)',
+          }}
+        >
+          {p.days === null ? 'new' : `${p.days}d`}
+        </span>
+
+        {p.rat_chat && (
+          <span
+            title="In the rat chat"
+            style={{
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              fontSize: 10,
+              background: 'rgba(255,255,255,0.92)',
+              borderRadius: 7,
+              padding: '2px 5px',
+              lineHeight: 1.2,
+              boxShadow: '0 1px 3px rgba(22,21,28,0.12)',
+            }}
+          >
+            {'🐀'}
+          </span>
+        )}
+      </div>
+
+      <div
+        style={{
+          marginTop: 9,
+          fontFamily: 'var(--display), sans-serif',
+          fontSize: 15,
+          fontWeight: 600,
+          letterSpacing: '-0.015em',
+          color: C.ink,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {p.name}
+      </div>
+    </button>
+  );
 }
 
 function Row({ p, first, onOpen }) {
