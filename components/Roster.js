@@ -67,7 +67,9 @@ export default function Roster(props) {
     setQ('');
     setSearchOpen(false);
   }
-  const [sort, setSort] = useState('cold');
+  // Just asked, not coldest. The list opens on what you've actually been doing
+  // rather than on a pile of reproach.
+  const [sort, setSort] = useState('recent');
   // tucked away by default — the list is the point, the numbers are a peek
   const [showStats, setShowStats] = useState(false);
   // hold the id, not the row object — rows are rebuilt on every reload, so a
@@ -926,7 +928,8 @@ function Row({ p, first, onOpen }) {
         textAlign: 'left',
       }}
     >
-      <Avatar name={p.name} url={p.photo_url} size={50} />
+      {/* the face is the fastest way to find someone in a list — worth the room */}
+      <Avatar name={p.name} url={p.photo_url} size={62} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
