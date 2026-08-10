@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   SunMoon,
+  X,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
@@ -51,6 +52,21 @@ export default function Roster(props) {
   // the deck is who you could ask; events are what came of it
   const [tab, setTab] = useState('deck'); // 'deck' | 'events'
   const [openEventId, setOpenEventId] = useState(null); // event id or 'new'
+  const [searchOpen, setSearchOpen] = useState(false);
+  const searchRef = useRef(null);
+
+  // Opening it should put the cursor in it — otherwise revealing the field is
+  // two taps to do one thing.
+  useEffect(() => {
+    if (searchOpen) searchRef.current?.focus();
+  }, [searchOpen]);
+
+  // Closing clears the query with it. Leaving a hidden filter behind would mean
+  // a roster missing people with nothing on screen explaining why.
+  function closeSearch() {
+    setQ('');
+    setSearchOpen(false);
+  }
   const [sort, setSort] = useState('cold');
   // tucked away by default — the list is the point, the numbers are a peek
   const [showStats, setShowStats] = useState(false);
@@ -219,6 +235,24 @@ export default function Roster(props) {
             </h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            {/* the way back to the field, and only on the tab it filters */}
+            {tab === 'deck' && (
+              <button
+                onClick={() => (searchOpen || q ? closeSearch() : setSearchOpen(true))}
+                aria-label={searchOpen || q ? 'Close search' : 'Search the deck'}
+                aria-pressed={searchOpen || !!q}
+                title="Search"
+                style={{
+                  display: 'flex',
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 2,
+                  color: searchOpen || q ? C.accent : C.muted,
+                }}
+              >
+                <Search size={16} />
+              </button>
+            )}
             <button
               onClick={() => setShowStats((v) => !v)}
               title={showStats ? 'Hide stats' : 'Show stats'}
@@ -444,26 +478,51 @@ export default function Roster(props) {
             own shape and neither applies to it */}
         {tab === 'deck' && (
           <>
-        <div style={{ position: 'relative', marginTop: 12 }}>
-          <Search
-            size={15}
-            color={C.muted}
-            style={{ position: 'absolute', left: 12, top: 12, pointerEvents: 'none' }}
-          />
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search name, handle, note"
-            style={{
-              width: '100%',
-              padding: '10px 12px 10px 34px',
-              borderRadius: 11,
-              border: `1px solid ${C.line}`,
-              background: C.canvas,
-              fontSize: 14.5,
-            }}
-          />
-        </div>
+        {/* Tucked away until asked for. With a deck this size you scroll to
+            find someone far more often than you type — the field was taking a
+            permanent row to solve an occasional problem. It stays open while
+            there's a query in it, so a filtered list always shows its cause. */}
+        {(searchOpen || q) && (
+          <div style={{ position: 'relative', marginTop: 12 }}>
+            <Search
+              size={15}
+              color={C.muted}
+              style={{ position: 'absolute', left: 12, top: 12, pointerEvents: 'none' }}
+            />
+            <input
+              ref={searchRef}
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
+              placeholder="Search name, handle, note"
+              style={{
+                width: '100%',
+                padding: '10px 34px 10px 34px',
+                borderRadius: 11,
+                border: `1px solid ${C.line}`,
+                background: C.canvas,
+                fontSize: 14.5,
+              }}
+            />
+            <button
+              onClick={closeSearch}
+              aria-label="Close search"
+              style={{
+                position: 'absolute',
+                right: 8,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: 'none',
+                background: 'transparent',
+                color: C.muted,
+                padding: 4,
+                display: 'flex',
+              }}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        )}
 
         {/* The toggle floats over the chips rather than taking a slot in the
             row, so the sorts keep the full width and slide underneath it. */}
