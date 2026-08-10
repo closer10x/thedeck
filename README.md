@@ -30,21 +30,52 @@ A personal CRM for the people you keep meaning to invite out. Mobile-first, list
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-side only — the sole database credential |
-| `ROLODECK_PIN` | yes in production | The app's PIN. Unset locally = no lock |
+| `ROLODECK_USERS` | yes in production | Who can get in: `Jon:1982,Carlos:1980`. Unset locally = no lock |
 | `GOOGLE_PLACES_API_KEY` | no | Venue autocomplete on the invite field |
 
 There is no anon key. The browser holds no database credential at all.
 
+`ROLODECK_PIN` from before still works and signs you in as a single user called
+Owner, but it's superseded by `ROLODECK_USERS`.
+
 ## The PIN lock
 
-The whole app sits behind a four-digit PIN. Middleware gates every route and API;
-the unlock cookie is a SHA-256 of the PIN, httpOnly, and expires after **five idle
-minutes**, sliding forward while you're using it. The tab also locks itself after
-five minutes of no interaction. Removing someone asks for the PIN again.
+The whole app sits behind a four-digit PIN, and **each PIN belongs to a person**.
+The PIN is the identity — there's no name to pick on the way in, so nobody can
+pick the wrong one, and everything you do is written down under that name.
 
-**Deployed with `ROLODECK_PIN` unset, the app returns 503 rather than serving.**
+Middleware gates every route and API. The unlock cookie is `name.hash`, where the
+hash is a SHA-256 of that person's PIN salted with their name: a cookie edited to
+claim someone else stops verifying. It's httpOnly and expires after **five idle
+minutes**, sliding forward while you're using it. The tab also locks itself after
+five minutes of no interaction. Removing someone asks for **your own** PIN again —
+the other person's won't do, or the deletion would land in the log under your name.
+
+Hand the phone over with **Sign out** in the header menu, so his asks are his.
+
+**Deployed with no users configured, the app returns 503 rather than serving.**
 That's deliberate: without it, both the app and `/api/upload` — which writes to
-Storage with the service role — would be wide open.
+Storage with the service role — would be wide open. Two people sharing a PIN, or
+a malformed `ROLODECK_USERS`, is refused the same way rather than guessed at.
+
+## The log
+
+Every write is recorded in the `activity` table under the name of whoever's PIN
+signed in: adding, editing, archiving and deleting people, asks and their outcomes
+and notes, photo uploads, and signing in and out. Read the whole thing from the
+header chip, or one person's from the History link in her sheet. Asks show
+**Logged by**, and people show who added them.
+
+Edits are diffed against the stored row before anything is written, so autosave
+posting an unchanged row logs nothing and each entry names the fields that actually
+changed. Photos are logged at the upload rather than at the row write — the weekly
+Instagram re-sync touches the same columns with nobody behind it.
+
+It's append-only: nothing in the app edits or deletes an entry, there is no route
+that could, and deleting someone keeps the record that she existed.
+
+Existing databases need `supabase/activity-log.sql` run once in the SQL editor.
+Until that happens the app works normally and the panel says what's missing.
 
 ## Photos
 
@@ -68,7 +99,7 @@ There is no save button. Edits settle for ~700ms and persist themselves.
 
 **The browser never talks to Supabase.** Every read and write goes through
 `/api/data`, `/api/people`, and `/api/invites`, which use the service role and sit
-behind the PIN gate in `middleware.js`. RLS is **on** for `people` and `invites`
+behind the PIN gate in `middleware.js`. RLS is **on** for `people`, `invites` and `activity`
 with **no policies at all** — that denies `anon` and `authenticated` outright, and
 the service role bypasses RLS by design. So there is no key in the client bundle
 worth stealing, and pulling one wouldn't help: the tables reject it.
