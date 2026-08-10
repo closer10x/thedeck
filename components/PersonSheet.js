@@ -169,23 +169,49 @@ export default function PersonSheet({
   // render so subsequent edits update rather than inserting a duplicate.
   const savedSnapshot = useRef(JSON.stringify(person || null));
   const createdId = useRef(person?.id || null);
+  const saving = useRef(false);
+  const queued = useRef(false);
+
+  // Saves run one at a time. Two in flight at once would both see a null id and
+  // both insert — that's how one person becomes five rows.
+  async function flush() {
+    if (saving.current) {
+      queued.current = true;
+      return {};
+    }
+    saving.current = true;
+    setSaveState('saving');
+
+    const res = (await onSave({ ...draftRef.current, id: person?.id || createdId.current })) || {};
+    if (res.id) createdId.current = res.id;
+
+    saving.current = false;
+    setSaveState(res.error ? 'error' : 'saved');
+    setSaveMsg(res.error ? `Could not save: ${res.error}` : '');
+    if (!res.error) setTimeout(() => setSaveState('idle'), 1400);
+
+    if (queued.current) {
+      queued.current = false;
+      flush(); // whatever changed while that one was in flight
+    }
+    return res;
+  }
+
+  // flush() reads the newest draft rather than the one captured when the timer
+  // was set, so a save that waited behind another isn't stale
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   useEffect(() => {
     if (!(draft.name || '').trim()) return; // nothing to create her by yet
     const body = JSON.stringify(draft);
     if (body === savedSnapshot.current) return;
 
-    const t = setTimeout(async () => {
+    const t = setTimeout(() => {
       savedSnapshot.current = body;
-      setSaveState('saving');
-      const res = (await onSave({ ...draft, id: person?.id || createdId.current })) || {};
-      // hold onto the id the insert handed back, or the next keystroke inserts
-      // her a second time
-      if (res.id) createdId.current = res.id;
-      setSaveState(res.error ? 'error' : 'saved');
-      setSaveMsg(res.error ? `Could not save: ${res.error}` : '');
-      if (!res.error) setTimeout(() => setSaveState('idle'), 1400);
+      flush();
     }, 700);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, onSave, person?.id]);
 
   // Google Places, debounced so a burst of keystrokes is one billed call.
@@ -251,6 +277,19 @@ export default function PersonSheet({
     }
     onRemove(person.id);
     requestClose();
+  }
+
+  // Autosave covers existing people, but adding someone new needs a finish
+  // line — an empty sheet with a silent status line reads as broken.
+  async function addNow() {
+    if (!(draft.name || '').trim()) {
+      setSaveMsg('She needs a name first.');
+      return;
+    }
+    setSaveMsg('');
+    savedSnapshot.current = JSON.stringify(draft);
+    const res = await flush(); // same serialized path, so it can't race the debounce
+    if (!res.error) requestClose();
   }
 
   function submitInvite() {
@@ -1093,6 +1132,39 @@ export default function PersonSheet({
         )}
 
         {/* actions */}
+        {!person && (
+          <button
+            onClick={addNow}
+            disabled={saveState === 'saving'}
+            style={{
+              width: '100%',
+              marginTop: 20,
+              padding: '14px 0',
+              borderRadius: 14,
+              border: 'none',
+              background: (draft.name || '').trim() ? C.accent : '#E4E2EC',
+              color: (draft.name || '').trim() ? '#fff' : '#9A98A6',
+              fontSize: 15,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+              transition: 'background 160ms, color 160ms',
+            }}
+          >
+            {saveState === 'saving' ? (
+              <>
+                <Loader2 size={16} className="spin" /> Adding…
+              </>
+            ) : (
+              <>
+                <Plus size={17} /> Add to deck
+              </>
+            )}
+          </button>
+        )}
+
         {saveMsg && (
           <div style={{ fontSize: 12.5, color: '#D6336C', marginTop: 14, textAlign: 'center' }}>
             {saveMsg}

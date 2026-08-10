@@ -38,11 +38,14 @@ alter table invites add column if not exists note text;
 
 create index if not exists invites_person_idx on invites(person_id, invited_at desc);
 
--- single-user app with no login screen: RLS is off, so the anon key alone can
--- read and write these two tables. Keep the deployment behind the app's own
--- passcode (ROLODECK_PASSCODE) or Vercel password protection.
-alter table people disable row level security;
-alter table invites disable row level security;
+-- RLS on with NO policies. That denies anon and authenticated outright; the
+-- service role bypasses RLS, and it only runs server-side behind the PIN gate.
+-- The browser holds no database credential at all, so there is nothing to steal.
+alter table people enable row level security;
+alter table invites enable row level security;
+
+drop policy if exists "own rows" on people;
+drop policy if exists "own rows" on invites;
 
 -- STORAGE, done once from the dashboard rather than here:
 -- create a public bucket named "avatars" (Storage -> New bucket -> Public).

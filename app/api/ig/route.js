@@ -95,25 +95,47 @@ async function fetchProfile(handle, limit = 6) {
 // us nothing. The <title> does — a real one reads
 // "Instagram (@handle) • Instagram photos and videos", a missing one is bare
 // "Instagram". The @ arrives HTML-escaped, hence the alternation.
-async function handleExists(handle) {
+// Returns { exists, name }. The title reads
+// "Jane Doe (@janedoe) • Instagram photos and videos" — which carries her
+// display name too, and this page keeps answering when the profile API is
+// throttled. That's the difference between a filled-in name and a blank one.
+async function readProfilePage(handle) {
   try {
     const r = await fetch(`https://www.instagram.com/${encodeURIComponent(handle)}/`, {
       headers: { 'user-agent': UA },
       cache: 'no-store',
     });
-    if (!r.ok) return null;
+    if (!r.ok) return { exists: null, name: null };
+
     const html = await r.text();
     const title = html.match(/<title>([^<]*)<\/title>/i)?.[1];
-    if (!title) return null;
+    if (!title) return { exists: null, name: null };
 
     const escaped = handle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    if (new RegExp(`\\((@|&#0?64;)${escaped}\\)`, 'i').test(title)) return true;
+    const match = title.match(new RegExp(`^(.*?)\\s*\\((?:@|&#0?64;)${escaped}\\)`, 'i'));
+    if (match) {
+      const name = decodeEntities(match[1]).trim();
+      // some profiles title themselves "@handle (@handle)" — not a real name
+      return { exists: true, name: name && !name.startsWith('@') ? name : null };
+    }
     // bare "Instagram" and no og:image is what a dead handle looks like
-    if (title.trim() === 'Instagram' && !/property="og:image"/.test(html)) return false;
+    if (title.trim() === 'Instagram' && !/property="og:image"/.test(html)) {
+      return { exists: false, name: null };
+    }
   } catch (e) {
     /* fall through */
   }
-  return null; // couldn't tell
+  return { exists: null, name: null };
+}
+
+function decodeEntities(s) {
+  return s
+    .replace(/&#0?39;/g, "'")
+    .replace(/&#0?64;/g, '@')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&nbsp;/g, ' ');
 }
 
 // Same reason the avatar gets copied: the signed CDN link expires in days, and
@@ -174,9 +196,13 @@ export async function POST(req) {
   ]);
   let { name, posts, status } = profile;
 
-  // throttled and no avatar either — second-source whether she exists at all
-  if (status === 'rate_limited' && !file) {
-    if ((await handleExists(handle)) === false) status = 'not_found';
+  // The profile API is the flaky part. When it withholds her name — throttled,
+  // or a private account the JSON didn't cover — fall back to the profile page,
+  // which also settles whether the handle exists at all.
+  if (!name || (status === 'rate_limited' && !file)) {
+    const page = await readProfilePage(handle);
+    if (page.name) name = page.name;
+    if (page.exists === false && !file) status = 'not_found';
   }
 
   if (!file) {

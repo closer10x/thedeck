@@ -29,10 +29,11 @@ A personal CRM for the people you keep meaning to invite out. Mobile-first, list
 | Variable | Required | What it does |
 | --- | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Browser-side reads and writes |
-| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-side only — caches photos into Storage |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-side only — the sole database credential |
 | `ROLODECK_PIN` | yes in production | The app's PIN. Unset locally = no lock |
 | `GOOGLE_PLACES_API_KEY` | no | Venue autocomplete on the invite field |
+
+There is no anon key. The browser holds no database credential at all.
 
 ## The PIN lock
 
@@ -65,10 +66,23 @@ There is no save button. Edits settle for ~700ms and persist themselves.
 
 ## Security notes
 
-RLS is **off** on `people` and `invites` — this is a single-user app with no login,
-so the anon key alone can read and write them. The PIN is what protects the data, so
-don't deploy without it. `/api/places` keeps the Google key server-side because a
-`NEXT_PUBLIC_` one would ship to every browser and Google bills per call.
+**The browser never talks to Supabase.** Every read and write goes through
+`/api/data`, `/api/people`, and `/api/invites`, which use the service role and sit
+behind the PIN gate in `middleware.js`. RLS is **on** for `people` and `invites`
+with **no policies at all** — that denies `anon` and `authenticated` outright, and
+the service role bypasses RLS by design. So there is no key in the client bundle
+worth stealing, and pulling one wouldn't help: the tables reject it.
+
+Verified rather than assumed — with the old anon key, `select` returns `[]` and
+`insert` fails with `42501 new row violates row-level security policy`.
+
+`/api/places` keeps the Google key server-side too, because a `NEXT_PUBLIC_` one
+would ship to every browser and Google bills per call.
+
+Still open: the `avatars` Storage bucket is public, so anyone holding a photo URL
+can load it, and paths are partly guessable (`ig/<handle>/<shortcode>.jpg`). The
+photos are already public on Instagram, but uploads from your camera roll are not.
+Making the bucket private and signing URLs would close that.
 
 ## Deploy
 

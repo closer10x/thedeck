@@ -1,9 +1,18 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabaseClient';
 import Roster from '../components/Roster';
 import IdleLock from '../components/IdleLock';
+
+// Every call goes to our own server, never to Supabase. RLS is on with no
+// policies, so the tables are unreachable except through the service role —
+// which lives server-side, behind the PIN gate in middleware.js.
+async function api(path, options) {
+  const r = await fetch(path, options);
+  const out = await r.json().catch(() => ({}));
+  if (!r.ok) return { error: out.error || `Request failed (${r.status})` };
+  return out;
+}
 
 export default function Page() {
   const [people, setPeople] = useState([]);
@@ -13,14 +22,11 @@ export default function Page() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [p, i] = await Promise.all([
-      supabase.from('people').select('*').order('created_at', { ascending: false }),
-      supabase.from('invites').select('*').order('invited_at', { ascending: false }),
-    ]);
+    const out = await api('/api/data');
     // clear on success too, or one bad load leaves the banner up forever
-    setError((p.error || i.error)?.message || null);
-    setPeople(p.data || []);
-    setInvites(i.data || []);
+    setError(out.error || null);
+    setPeople(out.people || []);
+    setInvites(out.invites || []);
     setLoading(false);
   }, []);
 
@@ -74,7 +80,12 @@ export default function Page() {
           }
 
           if (!Object.keys(update).length) continue;
-          await supabase.from('people').update(update).eq('id', p.id);
+          // send the whole row back — the endpoint replaces, it doesn't merge
+          await api('/api/people', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ ...p, ...update }),
+          });
         } catch {
           /* next week */
         }
@@ -87,61 +98,49 @@ export default function Page() {
     };
   }, [loading, people, load]);
 
+  const json = (body) => ({
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  // Returns { error, id }. The id matters for autosave: the first write for a
+  // new person is an insert, and the caller needs her id so the next keystroke
+  // updates that row instead of inserting her all over again.
   async function savePerson(person) {
-    const row = {
-      name: person.name,
-      ig_handle: person.ig_handle || null,
-      phone: person.phone || null,
-      photos: person.photos || [],
-      photos_synced_at: person.photos_synced_at || null,
-      photo_url: person.photo_url || null,
-      note: person.note || null,
-      rat_chat: !!person.rat_chat,
-      archived: !!person.archived,
-    };
-    // Returns { error, id }. The id matters for autosave: the first write for
-    // a new person is an insert, and the caller needs her id so the next
-    // keystroke updates that row instead of inserting her all over again.
-    const res = person.id
-      ? await supabase.from('people').update(row).eq('id', person.id).select('id').single()
-      : await supabase.from('people').insert(row).select('id').single();
+    const out = await api('/api/people', json(person));
     await load();
-    return { error: res.error?.message || null, id: res.data?.id || person.id || null };
+    return { error: out.error || null, id: out.id || person.id || null };
   }
 
   async function removePerson(id) {
-    const { error } = await supabase.from('people').delete().eq('id', id);
+    const out = await api(`/api/people?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
     await load();
-    if (error) setError(error.message);
+    if (out.error) setError(out.error);
   }
 
   async function logInvite(personId, what, outcome = 'pending', when = new Date()) {
-    const { error } = await supabase
-      .from('invites')
-      .insert({ person_id: personId, what: what || null, outcome, invited_at: when.toISOString() });
+    const out = await api(
+      '/api/invites',
+      json({ person_id: personId, what, outcome, invited_at: when.toISOString() })
+    );
     await load();
-    if (error) setError(error.message);
+    if (out.error) setError(out.error);
   }
 
-  async function setOutcome(inviteId, outcome) {
-    const { error } = await supabase.from('invites').update({ outcome }).eq('id', inviteId);
+  async function patchInvite(body) {
+    const out = await api('/api/invites', { ...json(body), method: 'PATCH' });
     await load();
-    if (error) setError(error.message);
+    if (out.error) setError(out.error);
   }
 
-  async function setInviteNote(inviteId, note) {
-    const { error } = await supabase
-      .from('invites')
-      .update({ note: note || null })
-      .eq('id', inviteId);
-    await load();
-    if (error) setError(error.message);
-  }
+  const setOutcome = (id, outcome) => patchInvite({ id, outcome });
+  const setInviteNote = (id, note) => patchInvite({ id, note });
 
   async function deleteInvite(inviteId) {
-    const { error } = await supabase.from('invites').delete().eq('id', inviteId);
+    const out = await api(`/api/invites?id=${encodeURIComponent(inviteId)}`, { method: 'DELETE' });
     await load();
-    if (error) setError(error.message);
+    if (out.error) setError(out.error);
   }
 
   return (
