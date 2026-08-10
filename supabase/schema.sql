@@ -38,11 +38,38 @@ alter table invites add column if not exists note text;
 
 create index if not exists invites_person_idx on invites(person_id, invited_at desc);
 
+-- who put the row there. A name, not a foreign key: users live in the
+-- ROLODECK_USERS env var, not in the database, and the point of stamping it is
+-- that it still reads correctly years later even if that list changes.
+alter table people add column if not exists created_by text;
+alter table invites add column if not exists created_by text;
+
+-- The log. Every write the app makes lands here, and nothing ever updates or
+-- deletes a row — an audit trail you can edit isn't one.
+create table if not exists activity (
+  id uuid primary key default gen_random_uuid(),
+  at timestamptz default now(),
+  actor text not null,                   -- 'Jon' — as it should read back
+  action text not null,                  -- 'person.add', 'ask.outcome', ...
+  subject text,                          -- her name, copied at write time
+  detail text,                           -- the human sentence for the feed
+  -- keep the log when she's deleted: the deletion is the entry that matters
+  person_id uuid references people(id) on delete set null,
+  meta jsonb                             -- changed fields, old/new outcome
+);
+
+create index if not exists activity_at_idx on activity(at desc);
+create index if not exists activity_person_idx on activity(person_id, at desc);
+
+-- Deleting someone shouldn't erase the record that she existed, so the name is
+-- copied onto the entry at write time rather than joined out of people.
+
 -- RLS on with NO policies. That denies anon and authenticated outright; the
 -- service role bypasses RLS, and it only runs server-side behind the PIN gate.
 -- The browser holds no database credential at all, so there is nothing to steal.
 alter table people enable row level security;
 alter table invites enable row level security;
+alter table activity enable row level security;
 
 drop policy if exists "own rows" on people;
 drop policy if exists "own rows" on invites;

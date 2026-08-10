@@ -22,6 +22,8 @@ export default function LockPage() {
   const router = useRouter();
   const [pin, setPin] = useState('');
   const [state, setState] = useState('idle'); // idle | checking | wrong | ok
+  // the PIN says who you are, so the pad can greet you before it lets you in
+  const [name, setName] = useState('');
 
   const submit = useCallback(
     async (value) => {
@@ -33,12 +35,15 @@ export default function LockPage() {
           body: JSON.stringify({ attempt: value }),
         });
         if (r.ok) {
+          const out = await r.json().catch(() => ({}));
+          if (out.name) setName(out.name);
           setState('ok');
-          // let the fill-and-glow finish before the page swaps
+          // let the fill-and-glow finish, and the greeting land, before the
+          // page swaps — 420ms was gone before the name could be read
           setTimeout(() => {
             router.replace('/');
             router.refresh();
-          }, 420);
+          }, 700);
         } else {
           setState('wrong');
           // hold the shake, then clear so the next try starts clean
@@ -143,8 +148,19 @@ export default function LockPage() {
       >
         The Deck
       </h1>
-      <div style={{ fontSize: 13.5, color: state === 'wrong' ? C.bad : C.muted, minHeight: 20 }}>
-        {state === 'wrong' ? 'Wrong PIN' : 'Enter your PIN'}
+      <div
+        style={{
+          fontSize: 13.5,
+          color: state === 'wrong' ? C.bad : state === 'ok' ? C.accent : C.muted,
+          fontWeight: state === 'ok' ? 600 : 400,
+          minHeight: 20,
+        }}
+      >
+        {state === 'wrong'
+          ? 'Wrong PIN'
+          : state === 'ok' && name
+            ? `Hey ${name}`
+            : 'Enter your PIN'}
       </div>
 
       {/* dots */}
@@ -196,7 +212,9 @@ export default function LockPage() {
       >
         {KEYS.map((k, i) =>
           k === null ? (
-            <span key={i} />
+            // not `key={i}` — the blank slot sits at index 9 and collided with
+            // the "9" key's own key, which React warns about on every render
+            <span key={`gap-${i}`} />
           ) : (
             <button
               key={k}

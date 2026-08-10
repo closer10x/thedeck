@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, ChevronDown, LayoutGrid, Rows3 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Search, Plus, ChevronDown, LayoutGrid, Rows3, History, LogOut } from 'lucide-react';
 import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
+import ActivityLog from './ActivityLog';
 import Stats from './Stats';
 import Mark from './Mark';
 import { daysSince, temp, rate, initials, OUTCOME_EMOJI } from '../lib/format';
@@ -26,8 +28,12 @@ const C = {
 };
 
 export default function Roster(props) {
-  const { people, invites, loading, error } = props;
+  const { people, invites, loading, error, me } = props;
+  const router = useRouter();
   const [q, setQ] = useState('');
+  // who's signed in, and the log of what everyone's done
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showLog, setShowLog] = useState(false);
   const [sort, setSort] = useState('cold');
   // tucked away by default — the list is the point, the numbers are a peek
   const [showStats, setShowStats] = useState(false);
@@ -48,6 +54,23 @@ export default function Roster(props) {
   function chooseView(v) {
     setView(v);
     localStorage.setItem('rolodeck_view', v);
+  }
+
+  // Handing the phone to the other one of you: drop the cookie and go back to
+  // the pad, so his PIN starts his own session rather than writing under yours.
+  async function signOut() {
+    setMenuOpen(false);
+    try {
+      await fetch('/api/lock', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ reason: 'manual' }),
+      });
+    } catch {
+      /* going to the lock screen regardless */
+    }
+    router.replace('/lock');
+    router.refresh();
   }
 
   const rows = useMemo(() => {
@@ -105,17 +128,17 @@ export default function Roster(props) {
     >
       {/* header */}
       <header
+        className="glass"
         style={{
           position: 'sticky',
           top: 0,
           zIndex: 5,
-          background: C.surface,
-          borderBottom: `1px solid ${C.line}`,
+          borderBottom: '1px solid rgba(255,255,255,0.5)',
           padding: '18px 16px 12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <span style={{ display: 'flex', color: C.accent, flexShrink: 0 }}>
               <Mark size={25} strokeWidth={1.5} />
             </span>
@@ -131,32 +154,111 @@ export default function Roster(props) {
               The Deck
             </h1>
           </div>
-          <button
-            onClick={() => setShowStats((v) => !v)}
-            title={showStats ? 'Hide stats' : 'Show stats'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              border: 'none',
-              background: 'transparent',
-              padding: 0,
-              fontFamily: 'var(--mono), monospace',
-              fontSize: 10.5,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: showStats ? C.accent : owed ? '#D6336C' : C.muted,
-            }}
-          >
-            {rows.length} on deck · {owed} owed
-            <ChevronDown
-              size={13}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+            <button
+              onClick={() => setShowStats((v) => !v)}
+              title={showStats ? 'Hide stats' : 'Show stats'}
               style={{
-                transform: showStats ? 'rotate(180deg)' : 'none',
-                transition: 'transform 180ms ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                fontFamily: 'var(--mono), monospace',
+                fontSize: 10.5,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: showStats ? C.accent : owed ? '#D6336C' : C.muted,
               }}
-            />
-          </button>
+            >
+              {rows.length} on deck · {owed} owed
+              <ChevronDown
+                size={13}
+                style={{
+                  transform: showStats ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 180ms ease',
+                }}
+              />
+            </button>
+
+            {/* Whose session this is. Initials rather than a name: the header
+                is tight, and you already know who you are — it's there so the
+                other one of you notices when it isn't him. */}
+            {me && (
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                <button
+                  onClick={() => setMenuOpen((v) => !v)}
+                  title={`Signed in as ${me.name}`}
+                  aria-label={`Signed in as ${me.name}`}
+                  aria-expanded={menuOpen}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: '50%',
+                    border: `1px solid ${menuOpen ? C.accent : C.line}`,
+                    background: menuOpen ? C.accent : '#EEECFD',
+                    color: menuOpen ? '#fff' : C.accent,
+                    fontFamily: 'var(--display), sans-serif',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.01em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'background 150ms ease, color 150ms ease',
+                  }}
+                >
+                  {initials(me.name) || '?'}
+                </button>
+
+                {menuOpen && (
+                  <>
+                    {/* tap anywhere else to put it away */}
+                    <div
+                      onClick={() => setMenuOpen(false)}
+                      style={{ position: 'fixed', inset: 0, zIndex: 8 }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 40,
+                        right: 0,
+                        zIndex: 9,
+                        minWidth: 190,
+                        background: C.surface,
+                        border: `1px solid ${C.line}`,
+                        borderRadius: 14,
+                        boxShadow: '0 12px 34px rgba(22,21,28,0.16)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div
+                        style={{
+                          padding: '10px 13px',
+                          borderBottom: `1px solid ${C.line}`,
+                          fontSize: 12.5,
+                          color: C.muted,
+                        }}
+                      >
+                        Signed in as{' '}
+                        <span style={{ color: C.ink, fontWeight: 600 }}>{me.name}</span>
+                      </div>
+                      <MenuItem
+                        Icon={History}
+                        label="Activity"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setShowLog(true);
+                        }}
+                      />
+                      <MenuItem Icon={LogOut} label="Sign out" danger onClick={signOut} />
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div style={{ position: 'relative', marginTop: 12 }}>
@@ -303,13 +405,16 @@ export default function Roster(props) {
 
       {/* add */}
       <div
+        className="glass glass-bottom"
         style={{
           position: 'fixed',
           bottom: 0,
           left: 0,
           right: 0,
           padding: '12px 16px calc(16px + env(safe-area-inset-bottom))',
-          background: 'linear-gradient(to top, #F5F4F8 62%, rgba(245,244,248,0))',
+          // the gradient scrim this replaces faded the roster out behind it;
+          // cards now stay visible through the bar, just blurred
+          borderTop: '1px solid rgba(255,255,255,0.5)',
           maxWidth: 480,
           margin: '0 auto',
         }}
@@ -349,7 +454,32 @@ export default function Roster(props) {
           onDeleteInvite={props.onDeleteInvite}
         />
       )}
+
+      {showLog && <ActivityLog onClose={() => setShowLog(false)} />}
     </main>
+  );
+}
+
+function MenuItem({ Icon, label, onClick, danger }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 9,
+        width: '100%',
+        padding: '11px 13px',
+        border: 'none',
+        background: 'transparent',
+        color: danger ? '#D6336C' : C.ink,
+        fontSize: 14,
+        textAlign: 'left',
+      }}
+    >
+      <Icon size={15} />
+      {label}
+    </button>
   );
 }
 

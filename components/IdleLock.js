@@ -19,7 +19,12 @@ export default function IdleLock() {
       if (done) return;
       done = true;
       try {
-        await fetch('/api/lock', { method: 'POST' });
+        // say why, so the log can tell walking away from signing out
+        await fetch('/api/lock', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ reason: 'idle' }),
+        });
       } catch {
         /* locking anyway */
       }

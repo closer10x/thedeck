@@ -11,8 +11,10 @@ import {
   Phone,
   Plus,
   CalendarDays,
+  History,
 } from 'lucide-react';
 import Avatar from './Avatar';
+import ActivityLog from './ActivityLog';
 import { parseHandle, formatUSPhone, OUTCOME_EMOJI } from '../lib/format';
 
 const C = { ink: '#16151C', muted: '#86848F', line: '#E9E8EF', accent: '#4B3BE0' };
@@ -94,6 +96,7 @@ export default function PersonSheet({
   const [passAttempt, setPassAttempt] = useState('');
   const [removeMsg, setRemoveMsg] = useState('');
   const [removing, setRemoving] = useState(false);
+  const [showLog, setShowLog] = useState(false);
   const dateRef = useRef(null);
   const placesSeq = useRef(0);
   const [showDate, setShowDate] = useState(false);
@@ -377,6 +380,10 @@ export default function PersonSheet({
       try {
         const body = new FormData();
         body.append('file', file);
+        // so the log can say whose photo it was. The id is what counts; the
+        // name is only read when she hasn't been saved yet and has no id.
+        body.append('person_id', person?.id || '');
+        body.append('name', draft.name || '');
         const r = await fetch('/api/upload', { method: 'POST', body });
         const out = await r.json();
         if (out.photo_url) added.push({ url: out.photo_url, source: 'upload' });
@@ -403,6 +410,9 @@ export default function PersonSheet({
     try {
       const body = new FormData();
       body.append('file', file);
+      body.append('person_id', person?.id || '');
+      body.append('name', draft.name || '');
+      body.append('kind', 'avatar');
       const r = await fetch('/api/upload', { method: 'POST', body });
       const out = await r.json();
       if (out.photo_url) set('photo_url', out.photo_url);
@@ -480,13 +490,18 @@ export default function PersonSheet({
   const invites = person?.invites || [];
 
   return (
+    <>
     <div
       onClick={requestClose}
       style={{
         position: 'fixed',
         inset: 0,
         background: `rgba(22,21,28,${0.32 * backdropFade})`,
-        transition: dragging ? 'none' : 'background 260ms ease',
+        // the roster blurs out behind the sheet, and un-blurs as you drag it
+        // down — so the dismiss gesture is felt in the background too
+        backdropFilter: `blur(${8 * backdropFade}px)`,
+        WebkitBackdropFilter: `blur(${8 * backdropFade}px)`,
+        transition: dragging ? 'none' : 'background 260ms ease, backdrop-filter 260ms ease',
         zIndex: 20,
         display: 'flex',
         alignItems: 'flex-end',
@@ -920,7 +935,27 @@ export default function PersonSheet({
         {/* invites */}
         {person && (
           <>
-            <Label>Invites</Label>
+            <div
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Label>Invites</Label>
+              {/* everything anyone has ever done to her, not just the asks */}
+              <button
+                onClick={() => setShowLog(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  border: 'none',
+                  background: 'transparent',
+                  padding: '0 0 6px',
+                  color: C.muted,
+                  fontSize: 12,
+                }}
+              >
+                <History size={13} /> History
+              </button>
+            </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'stretch' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <input
@@ -1098,6 +1133,22 @@ export default function PersonSheet({
                       </span>
                     </div>
 
+                    {/* older asks predate the log and have nobody on them —
+                        better blank than guessing it was whoever's looking */}
+                    {inv.created_by && (
+                      <div
+                        style={{
+                          fontFamily: 'var(--mono), monospace',
+                          fontSize: 10,
+                          letterSpacing: '0.04em',
+                          color: C.muted,
+                          marginTop: 5,
+                        }}
+                      >
+                        Logged by {inv.created_by}
+                      </div>
+                    )}
+
                     <div style={{ display: 'flex', gap: 5, marginTop: 9, alignItems: 'center' }}>
                       {OUTCOMES.map((o) => {
                         const on = inv.outcome === o.id;
@@ -1243,6 +1294,23 @@ export default function PersonSheet({
           ) : null}
         </div>
 
+        {/* who put her on the deck. Blank for anyone added before the log
+            existed, which is honest — nobody knows who that was. */}
+        {person?.created_by && (
+          <div
+            style={{
+              fontFamily: 'var(--mono), monospace',
+              fontSize: 10,
+              letterSpacing: '0.04em',
+              color: C.muted,
+              textAlign: 'center',
+              marginTop: 14,
+            }}
+          >
+            Added by {person.created_by}
+          </div>
+        )}
+
         {person && !confirmRemove && (
           <button
             onClick={openRemove}
@@ -1343,6 +1411,17 @@ export default function PersonSheet({
         )}
       </div>
     </div>
+
+    {/* her history, not the whole deck's — sits above the sheet rather than
+        inside it, so closing the log doesn't close her */}
+    {showLog && person && (
+      <ActivityLog
+        personId={person.id}
+        title={person.name}
+        onClose={() => setShowLog(false)}
+      />
+    )}
+    </>
   );
 }
 

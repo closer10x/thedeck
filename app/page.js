@@ -26,6 +26,8 @@ async function api(path, options) {
 export default function Page() {
   const [people, setPeople] = useState([]);
   const [invites, setInvites] = useState([]);
+  // who's signed in — the roster load answers it, from the session cookie
+  const [me, setMe] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -41,6 +43,8 @@ export default function Page() {
       setError(out.error || null);
       setPeople(out.people || []);
       setInvites(out.invites || []);
+      // a failed load shouldn't blank the name out of the header
+      if (out.me) setMe(out.me);
     } finally {
       // whatever went wrong, stop showing the spinner. A stuck `loading` looks
       // exactly like a hung app and hides the error that would explain it.
@@ -188,6 +192,7 @@ export default function Page() {
       <Roster
         people={people}
         invites={invites}
+        me={me}
         loading={loading}
         error={error}
         onSavePerson={savePerson}

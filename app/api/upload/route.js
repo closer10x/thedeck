@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { logActivity } from '../../../lib/audit';
 
 export const runtime = 'nodejs';
 
@@ -36,5 +37,33 @@ export async function POST(req) {
   }
 
   const { data } = supabaseAdmin.storage.from('avatars').getPublicUrl(path);
+
+  // Photos are logged here rather than in /api/people. The sheet uploads first
+  // and saves the row after, and the weekly Instagram re-pull writes the same
+  // columns with nobody behind it — so the upload itself is the only moment
+  // that a person actually chose to add a picture.
+  const personId = form.get('person_id') || null;
+  const avatar = form.get('kind') === 'avatar';
+  // her name off the row when there is one; a person being added doesn't have
+  // an id yet, so the sheet sends what's typed in the name field instead
+  let name = String(form.get('name') || '').trim();
+  if (personId) {
+    const { data: person } = await supabaseAdmin
+      .from('people')
+      .select('name')
+      .eq('id', personId)
+      .maybeSingle();
+    if (person?.name) name = person.name;
+  }
+
+  await logActivity(req, {
+    action: avatar ? 'photo.avatar' : 'photo.add',
+    subject: name || null,
+    person_id: personId,
+    detail: name
+      ? `${avatar ? 'Changed' : 'Added'} a photo for ${name}`
+      : `${avatar ? 'Changed' : 'Added'} a photo`,
+  });
+
   return NextResponse.json({ photo_url: data.publicUrl });
 }

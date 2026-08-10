@@ -15,3 +15,50 @@ button { cursor: pointer; }
 }
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* Glass — one treatment for every surface that floats over the roster: the
+   sticky header, the add bar, the sheet. Content passes underneath and stays
+   readable through it rather than being hidden behind a solid panel.
+   The hairline and the inset highlight are what sell it as a pane of glass;
+   without them it just reads as a washed-out background. */
+.glass {
+  /* A gradient rather than a flat tint: real glass catches more light at the
+     top edge and thins out toward the middle. Flat translucency reads as a
+     dimmed panel; the falloff is what makes it look like a pane. */
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.58),
+    rgba(255, 255, 255, 0.34)
+  );
+  /* brightness lifts what's underneath so the blur doesn't turn to grey mud,
+     saturate keeps the photos colourful through it */
+  -webkit-backdrop-filter: blur(30px) saturate(200%) brightness(1.08);
+  backdrop-filter: blur(30px) saturate(200%) brightness(1.08);
+  box-shadow:
+    /* the lit top edge */
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    /* a faint bevel down the inside so it has thickness */
+    inset 0 -1px 0 rgba(255, 255, 255, 0.28),
+    0 1px 24px rgba(22, 21, 28, 0.05);
+}
+
+/* the bar at the bottom is lit from the other side */
+.glass-bottom {
+  background: linear-gradient(
+    to top,
+    rgba(255, 255, 255, 0.58),
+    rgba(255, 255, 255, 0.34)
+  );
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 -1px 24px rgba(22, 21, 28, 0.05);
+}
+
+/* Firefox, and Safari with "Reduce transparency" on, have no backdrop-filter.
+   Falling back to a translucent panel there would leave text sitting on top of
+   whatever scrolled under it, so go opaque instead. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .glass-bottom { background: #ffffff; }
+}
