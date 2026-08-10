@@ -61,16 +61,31 @@ function dayLabel(iso) {
 // that edits an entry, so nothing in here offers to.
 export default function ActivityLog({ personId = null, title = 'Activity', onClose }) {
   const [entries, setEntries] = useState([]);
-  const [state, setState] = useState('loading'); // loading | ready | missing | error
+  const [state, setState] = useState('loading'); // loading | ready | missing | error | offline
   const [message, setMessage] = useState('');
   const [who, setWho] = useState('all');
+  const [showSessions, setShowSessions] = useState(false);
+  // bumping this re-runs the load — what Try again does
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setState('loading');
     (async () => {
       try {
         const url = personId ? `/api/activity?person_id=${encodeURIComponent(personId)}` : '/api/activity';
         const r = await fetch(url);
+
+        // Being locked out mid-session comes back as a status, not a body we
+        // can read — say so plainly rather than "Unexpected token <".
+        if (r.status === 401) {
+          if (alive) {
+            setState('error');
+            setMessage('Your session timed out. Close this and enter your PIN again.');
+          }
+          return;
+        }
+
         const out = await r.json();
         if (!alive) return;
 
@@ -86,23 +101,32 @@ export default function ActivityLog({ personId = null, title = 'Activity', onClo
         }
         setEntries(out.entries || []);
         setState('ready');
-      } catch (e) {
+      } catch {
+        // fetch rejects rather than resolving when nothing answers — a dropped
+        // connection, or a dev server that isn't running any more. "Failed to
+        // fetch" is the browser's words for it and tells you nothing.
         if (!alive) return;
-        setState('error');
-        setMessage(e?.message || 'Could not reach the server.');
+        setState('offline');
       }
     })();
     return () => {
       alive = false;
     };
-  }, [personId]);
+  }, [personId, attempt]);
 
   const actors = useMemo(
     () => Array.from(new Set(entries.map((e) => e.actor).filter(Boolean))).sort(),
     [entries]
   );
 
-  const shown = who === 'all' ? entries : entries.filter((e) => e.actor === who);
+  // Signing in and out is a fact about the session, not about anyone on the
+  // deck, and there are far more of them than there are changes — left in, they
+  // bury the entries you opened this to read. Still here, one tap away.
+  const sessions = entries.filter((e) => e.action.startsWith('session.')).length;
+
+  const shown = entries
+    .filter((e) => showSessions || !e.action.startsWith('session.'))
+    .filter((e) => who === 'all' || e.actor === who);
 
   // one heading per day, in the order the entries already arrive (newest first)
   const groups = useMemo(() => {
@@ -172,29 +196,48 @@ export default function ActivityLog({ personId = null, title = 'Activity', onClo
           </div>
 
           {/* who did what — only worth showing once more than one person has */}
-          {actors.length > 1 && (
+          {(actors.length > 1 || sessions > 0) && (
             <div style={{ display: 'flex', gap: 6, marginTop: 12, overflowX: 'auto', scrollbarWidth: 'none' }}>
-              {['all', ...actors].map((a) => {
-                const on = who === a;
-                return (
-                  <button
-                    key={a}
-                    onClick={() => setWho(a)}
-                    style={{
-                      flexShrink: 0,
-                      padding: '6px 11px',
-                      borderRadius: 999,
-                      border: `1px solid ${on ? C.accent : C.line}`,
-                      background: on ? C.accent : C.surface,
-                      color: on ? '#fff' : C.muted,
-                      fontSize: 12.5,
-                      fontWeight: 500,
-                    }}
-                  >
-                    {a === 'all' ? 'Everyone' : a}
-                  </button>
-                );
-              })}
+              {actors.length > 1 &&
+                ['all', ...actors].map((a) => {
+                  const on = who === a;
+                  return (
+                    <button
+                      key={a}
+                      onClick={() => setWho(a)}
+                      style={{
+                        flexShrink: 0,
+                        padding: '6px 11px',
+                        borderRadius: 999,
+                        border: `1px solid ${on ? C.accent : C.line}`,
+                        background: on ? C.accent : C.surface,
+                        color: on ? '#fff' : C.muted,
+                        fontSize: 12.5,
+                        fontWeight: 500,
+                      }}
+                    >
+                      {a === 'all' ? 'Everyone' : a}
+                    </button>
+                  );
+                })}
+              {sessions > 0 && (
+                <button
+                  onClick={() => setShowSessions((v) => !v)}
+                  style={{
+                    flexShrink: 0,
+                    marginLeft: actors.length > 1 ? 'auto' : 0,
+                    padding: '6px 11px',
+                    borderRadius: 999,
+                    border: `1px solid ${showSessions ? C.accent : C.line}`,
+                    background: showSessions ? C.accent : C.surface,
+                    color: showSessions ? '#fff' : C.muted,
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                  }}
+                >
+                  {showSessions ? 'Hide sign-ins' : `Sign-ins (${sessions})`}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -208,7 +251,28 @@ export default function ActivityLog({ personId = null, title = 'Activity', onClo
           }}
         >
           {state === 'loading' && <Note>Reading the log…</Note>}
-          {state === 'error' && <Note>Couldn&apos;t load the log: {message}</Note>}
+          {state === 'error' && <Note>{message}</Note>}
+          {state === 'offline' && (
+            <Note>
+              Couldn&apos;t reach the server. The log is safe — this is the connection.
+              <button
+                onClick={() => setAttempt((n) => n + 1)}
+                style={{
+                  display: 'block',
+                  margin: '12px auto 0',
+                  padding: '8px 16px',
+                  borderRadius: 999,
+                  border: `1px solid ${C.line}`,
+                  background: C.surface,
+                  color: C.accent,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                Try again
+              </button>
+            </Note>
+          )}
           {state === 'missing' && (
             <Note>
               The log table isn&apos;t set up yet. Paste{' '}
@@ -296,6 +360,13 @@ function Entry({ entry }) {
             {entry.actor}
           </span>
           <span>{ago(entry.at)}</span>
+          {/* Reconstructed from the row's own timestamp, not something the log
+              was running for. Worth saying, or the log overstates itself. */}
+          {entry.meta?.backfilled && (
+            <span title="Reconstructed from her record — this predates the log" style={{ opacity: 0.75 }}>
+              · from record
+            </span>
+          )}
         </div>
       </div>
     </div>
