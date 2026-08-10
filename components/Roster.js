@@ -686,43 +686,46 @@ export default function Roster(props) {
           ))}
       </div>
 
-      {/* add */}
+      {/* Add. It floats over the list rather than sitting in a bar across the
+          bottom — the bar was a full-width panel spent on one button, and the
+          roster is what the screen is for. The strip itself takes no pointer
+          events so the row underneath the button stays tappable. */}
       <div
-        className="glass glass-bottom"
         style={{
           position: 'fixed',
           bottom: 0,
           left: 0,
           right: 0,
-          padding: '12px 16px calc(16px + env(safe-area-inset-bottom))',
-          // the gradient scrim this replaces faded the roster out behind it;
-          // cards now stay visible through the bar, just blurred
-          borderTop: '1px solid var(--glass-fill)',
-          maxWidth: 480,
-          margin: '0 auto',
+          padding: '0 16px calc(22px + env(safe-area-inset-bottom))',
+          display: 'flex',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          zIndex: 6,
         }}
       >
         {/* one button, and it does whatever the tab you're on is for */}
         <button
           onClick={() => (tab === 'deck' ? setOpenId('new') : setOpenEventId('new'))}
           disabled={tab === 'events' && eventsState === 'missing'}
+          aria-label={tab === 'deck' ? 'Add someone' : 'New event'}
+          title={tab === 'deck' ? 'Add someone' : 'New event'}
           style={{
-            width: '100%',
-            padding: '14px 16px',
-            borderRadius: 14,
+            pointerEvents: 'auto',
+            width: 60,
+            height: 60,
+            borderRadius: '50%',
             border: 'none',
             background: tab === 'events' && eventsState === 'missing' ? 'var(--faint)' : C.accent,
             color: 'var(--surface)',
-            fontSize: 15,
-            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 8,
-            boxShadow: '0 6px 20px var(--accent-glow)',
+            // a heavier, tighter shadow than the bar had: floating over content
+            // it needs to read as lifted off the page, not tinted onto it
+            boxShadow: '0 8px 24px var(--accent-glow), 0 2px 6px var(--shadow-lift)',
           }}
         >
-          <Plus size={17} /> {tab === 'deck' ? 'Add someone' : 'New event'}
+          <Plus size={27} strokeWidth={2.4} />
         </button>
       </div>
 
