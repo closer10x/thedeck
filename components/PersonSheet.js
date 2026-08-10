@@ -122,7 +122,11 @@ export default function PersonSheet({
 
   const requestClose = useCallback(() => {
     setClosing(true);
+    // An edit still inside the debounce dies with the unmount, so write it now.
+    // The sheet slides out either way; the save rides along behind it.
+    flushPending();
     setTimeout(onClose, 260); // let it finish sliding before it unmounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onClose]);
 
   // Touch anywhere in the sheet and pull down. The drag only engages once the
@@ -171,6 +175,25 @@ export default function PersonSheet({
   const createdId = useRef(person?.id || null);
   const saving = useRef(false);
   const queued = useRef(false);
+  const saveTimer = useRef(null);
+
+  // flush() reads the newest draft rather than the one captured when the timer
+  // was set, so a save that waited behind another isn't stale
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+
+  // onSave is redefined on every render of the page above, and person arrives
+  // as a fresh object after each refresh. Read both through refs so neither
+  // identity change can land in the debounce effect's dependencies below.
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  const personIdRef = useRef(person?.id);
+  personIdRef.current = person?.id;
+
+  // the sheet can unmount mid-write; the fetch still completes, but its state
+  // updates have nowhere to go
+  const alive = useRef(true);
+  useEffect(() => () => { alive.current = false; }, []);
 
   // Saves run one at a time. Two in flight at once would both see a null id and
   // both insert — that's how one person becomes five rows.
@@ -180,15 +203,21 @@ export default function PersonSheet({
       return {};
     }
     saving.current = true;
-    setSaveState('saving');
+    if (alive.current) setSaveState('saving');
 
-    const res = (await onSave({ ...draftRef.current, id: person?.id || createdId.current })) || {};
+    const res =
+      (await onSaveRef.current({
+        ...draftRef.current,
+        id: personIdRef.current || createdId.current,
+      })) || {};
     if (res.id) createdId.current = res.id;
 
     saving.current = false;
-    setSaveState(res.error ? 'error' : 'saved');
-    setSaveMsg(res.error ? `Could not save: ${res.error}` : '');
-    if (!res.error) setTimeout(() => setSaveState('idle'), 1400);
+    if (alive.current) {
+      setSaveState(res.error ? 'error' : 'saved');
+      setSaveMsg(res.error ? `Could not save: ${res.error}` : '');
+      if (!res.error) setTimeout(() => setSaveState('idle'), 1400);
+    }
 
     if (queued.current) {
       queued.current = false;
@@ -197,22 +226,33 @@ export default function PersonSheet({
     return res;
   }
 
-  // flush() reads the newest draft rather than the one captured when the timer
-  // was set, so a save that waited behind another isn't stale
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  // Writes whatever is still sitting in the debounce. Called on close, where
+  // the alternative is dropping the edit on the floor.
+  function flushPending() {
+    clearTimeout(saveTimer.current);
+    if (!(draftRef.current?.name || '').trim()) return;
+    const body = JSON.stringify(draftRef.current);
+    if (body === savedSnapshot.current) return;
+    savedSnapshot.current = body;
+    flush();
+  }
+
+  // Deps are the draft alone. Anything else here — onSave, person.id — changes
+  // identity on every refresh from the page above, and since the cleanup
+  // cancels the pending timer, a refresh mid-edit would restart the 700ms wait
+  // instead of letting it fire. Under a burst of refreshes it never fires.
   useEffect(() => {
     if (!(draft.name || '').trim()) return; // nothing to create her by yet
     const body = JSON.stringify(draft);
     if (body === savedSnapshot.current) return;
 
-    const t = setTimeout(() => {
+    saveTimer.current = setTimeout(() => {
       savedSnapshot.current = body;
       flush();
     }, 700);
-    return () => clearTimeout(t);
+    return () => clearTimeout(saveTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, onSave, person?.id]);
+  }, [draft]);
 
   // Google Places, debounced so a burst of keystrokes is one billed call.
   // Silent by design: no key, no network, no suggestions — just a text box.
@@ -986,7 +1026,6 @@ export default function PersonSheet({
                 ref={dateRef}
                 type="date"
                 value={when}
-                max={todayISO()}
                 onChange={(e) => setWhen(e.target.value)}
                 style={{ ...inputStyle, marginTop: 8 }}
               />

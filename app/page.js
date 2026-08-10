@@ -20,13 +20,18 @@ export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Only the first load draws the spinner. Every later refresh is silent —
+  // flipping `loading` on a background refresh replaces the roster with
+  // "Loading the deck…" mid-edit, and costs a render the sheet has to survive.
+  const loadedOnce = useRef(false);
   const load = useCallback(async () => {
-    setLoading(true);
+    if (!loadedOnce.current) setLoading(true);
     const out = await api('/api/data');
     // clear on success too, or one bad load leaves the banner up forever
     setError(out.error || null);
     setPeople(out.people || []);
     setInvites(out.invites || []);
+    loadedOnce.current = true;
     setLoading(false);
   }, []);
 
@@ -104,44 +109,64 @@ export default function Page() {
     body: JSON.stringify(body),
   });
 
+  // These are all wrapped so their identities survive a refresh. The sheet
+  // debounces autosave on a timer that its effect cancels whenever a prop
+  // changes, so a handler rebuilt on every render kept resetting the wait and
+  // edits never reached the server.
+
   // Returns { error, id }. The id matters for autosave: the first write for a
   // new person is an insert, and the caller needs her id so the next keystroke
   // updates that row instead of inserting her all over again.
-  async function savePerson(person) {
-    const out = await api('/api/people', json(person));
-    await load();
-    return { error: out.error || null, id: out.id || person.id || null };
-  }
+  const savePerson = useCallback(
+    async (person) => {
+      const out = await api('/api/people', json(person));
+      await load();
+      return { error: out.error || null, id: out.id || person.id || null };
+    },
+    [load]
+  );
 
-  async function removePerson(id) {
-    const out = await api(`/api/people?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
-    await load();
-    if (out.error) setError(out.error);
-  }
+  const removePerson = useCallback(
+    async (id) => {
+      const out = await api(`/api/people?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      await load();
+      if (out.error) setError(out.error);
+    },
+    [load]
+  );
 
-  async function logInvite(personId, what, outcome = 'pending', when = new Date()) {
-    const out = await api(
-      '/api/invites',
-      json({ person_id: personId, what, outcome, invited_at: when.toISOString() })
-    );
-    await load();
-    if (out.error) setError(out.error);
-  }
+  const logInvite = useCallback(
+    async (personId, what, outcome = 'pending', when = new Date()) => {
+      const out = await api(
+        '/api/invites',
+        json({ person_id: personId, what, outcome, invited_at: when.toISOString() })
+      );
+      await load();
+      if (out.error) setError(out.error);
+    },
+    [load]
+  );
 
-  async function patchInvite(body) {
-    const out = await api('/api/invites', { ...json(body), method: 'PATCH' });
-    await load();
-    if (out.error) setError(out.error);
-  }
+  const patchInvite = useCallback(
+    async (body) => {
+      const out = await api('/api/invites', { ...json(body), method: 'PATCH' });
+      await load();
+      if (out.error) setError(out.error);
+    },
+    [load]
+  );
 
-  const setOutcome = (id, outcome) => patchInvite({ id, outcome });
-  const setInviteNote = (id, note) => patchInvite({ id, note });
+  const setOutcome = useCallback((id, outcome) => patchInvite({ id, outcome }), [patchInvite]);
+  const setInviteNote = useCallback((id, note) => patchInvite({ id, note }), [patchInvite]);
 
-  async function deleteInvite(inviteId) {
-    const out = await api(`/api/invites?id=${encodeURIComponent(inviteId)}`, { method: 'DELETE' });
-    await load();
-    if (out.error) setError(out.error);
-  }
+  const deleteInvite = useCallback(
+    async (inviteId) => {
+      const out = await api(`/api/invites?id=${encodeURIComponent(inviteId)}`, { method: 'DELETE' });
+      await load();
+      if (out.error) setError(out.error);
+    },
+    [load]
+  );
 
   return (
     <>
