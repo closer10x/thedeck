@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Search, Plus, ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, Plus, ChevronDown, LayoutGrid, Rows3 } from 'lucide-react';
 import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
 import Stats from './Stats';
@@ -34,6 +34,21 @@ export default function Roster(props) {
   // hold the id, not the row object — rows are rebuilt on every reload, so a
   // captured object goes stale the moment you log an ask from inside the sheet
   const [openId, setOpenId] = useState(null); // person id or 'new'
+
+  // Grid is faces, list is facts — which one you want depends on whether you're
+  // browsing or working the queue, so it's a toggle rather than a decision.
+  // Read from storage after mount, never during: this page is prerendered, and
+  // seeding state from localStorage would hydrate against different markup.
+  const [view, setView] = useState('grid'); // 'grid' | 'list'
+  useEffect(() => {
+    const saved = localStorage.getItem('rolodeck_view');
+    if (saved === 'grid' || saved === 'list') setView(saved);
+  }, []);
+
+  function chooseView(v) {
+    setView(v);
+    localStorage.setItem('rolodeck_view', v);
+  }
 
   const rows = useMemo(() => {
     const byPerson = {};
@@ -165,36 +180,81 @@ export default function Roster(props) {
           />
         </div>
 
-        <div
-          style={{
-            display: 'flex',
-            gap: 6,
-            marginTop: 10,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-          }}
-        >
-          {SORTS.map((s) => {
-            const on = s.id === sort;
-            return (
-              <button
-                key={s.id}
-                onClick={() => setSort(s.id)}
-                style={{
-                  flexShrink: 0,
-                  padding: '6px 11px',
-                  borderRadius: 999,
-                  border: `1px solid ${on ? C.accent : C.line}`,
-                  background: on ? C.accent : C.surface,
-                  color: on ? '#fff' : C.muted,
-                  fontSize: 12.5,
-                  fontWeight: 500,
-                }}
-              >
-                {s.label}
-              </button>
-            );
-          })}
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+          {/* the chips scroll; the view toggle stays put. minWidth:0 so the
+              scroller is allowed to shrink instead of shoving the toggle off */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              flex: 1,
+              minWidth: 0,
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+            }}
+          >
+            {SORTS.map((s) => {
+              const on = s.id === sort;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => setSort(s.id)}
+                  style={{
+                    flexShrink: 0,
+                    padding: '6px 11px',
+                    borderRadius: 999,
+                    border: `1px solid ${on ? C.accent : C.line}`,
+                    background: on ? C.accent : C.surface,
+                    color: on ? '#fff' : C.muted,
+                    fontSize: 12.5,
+                    fontWeight: 500,
+                  }}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexShrink: 0,
+              gap: 2,
+              padding: 2,
+              borderRadius: 999,
+              border: `1px solid ${C.line}`,
+              background: C.canvas,
+            }}
+          >
+            {[
+              { id: 'grid', Icon: LayoutGrid, label: 'Grid view' },
+              { id: 'list', Icon: Rows3, label: 'List view' },
+            ].map(({ id, Icon, label }) => {
+              const on = view === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => chooseView(id)}
+                  aria-label={label}
+                  aria-pressed={on}
+                  title={label}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '5px 8px',
+                    borderRadius: 999,
+                    border: 'none',
+                    background: on ? C.surface : 'transparent',
+                    color: on ? C.accent : C.muted,
+                    boxShadow: on ? '0 1px 3px rgba(22,21,28,0.12)' : 'none',
+                  }}
+                >
+                  <Icon size={15} />
+                </button>
+              );
+            })}
+          </div>
         </div>
       </header>
 
@@ -207,13 +267,27 @@ export default function Roster(props) {
           <Empty text={q ? 'No one matches that.' : 'Nobody on deck yet. Add someone below.'} />
         )}
 
-        {rows.length > 0 && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {rows.map((p) => (
-              <Card key={p.id} p={p} onOpen={() => setOpenId(p.id)} />
-            ))}
-          </div>
-        )}
+        {rows.length > 0 &&
+          (view === 'grid' ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              {rows.map((p) => (
+                <Card key={p.id} p={p} onOpen={() => setOpenId(p.id)} />
+              ))}
+            </div>
+          ) : (
+            <div
+              style={{
+                background: C.surface,
+                borderRadius: 16,
+                border: `1px solid ${C.line}`,
+                overflow: 'hidden',
+              }}
+            >
+              {rows.map((p, i) => (
+                <Row key={p.id} p={p} first={i === 0} onOpen={() => setOpenId(p.id)} />
+              ))}
+            </div>
+          ))}
       </div>
 
       {/* add */}
@@ -288,6 +362,9 @@ function Card({ p, onOpen }) {
       style={{
         display: 'block',
         width: '100%',
+        // grid items default to min-width:auto, so a long nowrap name sets the
+        // column's minimum and the two columns stop being equal
+        minWidth: 0,
         padding: 10,
         background: C.surface,
         border: `1px solid ${C.line}`,
