@@ -115,7 +115,8 @@ export default function Page() {
           if (data.photo_url) update.photo_url = data.photo_url;
 
           // a real answer — grid, locked account, or gone — counts as synced.
-          // being throttled doesn't, so she stays due and gets picked up again.
+          // being throttled or walled doesn't, so she stays due and gets picked
+          // up again rather than sitting a week on an answer nobody gave.
           if (['ok', 'private', 'not_found'].includes(data.status)) {
             update.photos_synced_at = new Date().toISOString();
           }

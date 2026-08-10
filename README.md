@@ -32,6 +32,7 @@ A personal CRM for the people you keep meaning to invite out. Mobile-first, list
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-side only — the sole database credential |
 | `ROLODECK_USERS` | yes in production | Who can get in: `Jon:1982,Carlos:1980`. Unset locally = no lock |
 | `GOOGLE_PLACES_API_KEY` | no | Venue autocomplete on the invite field |
+| `IG_SESSIONID` | no | `sessionid` cookie from a logged-in Instagram browser. Without it, deployed photo pulls hit a login wall |
 
 There is no anon key. The browser holds no database credential at all.
 
@@ -101,14 +102,28 @@ Until that happens the app works normally and the panel says what's missing.
 Tap the avatar to upload one. The six-square grid below fills from Instagram, or
 from your camera roll when there's no account to pull from.
 
-Instagram is scraped, not APIed: `/api/ig` resolves the avatar via unavatar with an
-`og:image` fallback, and reads the recent grid off the public profile endpoint. Both
-get copied into your own Storage bucket, because Instagram's CDN links expire and
-only answer the client that requested them. Grids re-sync weekly in the background.
+Instagram is scraped, not APIed: `/api/ig` tries the avatar in three places —
+unavatar, the profile JSON, then the page's `og:image` — and reads the recent grid
+off the public profile endpoint. Both get copied into your own Storage bucket,
+because Instagram's CDN links expire and only answer the client that requested
+them. Grids re-sync weekly in the background.
 
 That endpoint is undocumented and rate-limited by IP. When it throttles you the app
 says so plainly instead of showing an empty grid, and it never overwrites photos you
 already have with nothing.
+
+**Logged out, Instagram shows a datacenter IP a login wall**, which is what
+deployed pulls usually hit — the avatar still lands but the grid comes back empty.
+Set `IG_SESSIONID` to the `sessionid` cookie from a browser you're logged into and
+the grid works from the server too. Use a throwaway account: the cookie is that
+account's login, and it expires on sign-out.
+
+A pull that comes back empty is careful about saying why. "No account by that
+handle" only appears when something actually looked her up and didn't find her — a
+404 from the profile endpoint, or a profile page that rendered and didn't know the
+name. A wall or a throttle proves nothing about whether she exists, and says so
+instead, because the useful next move there is to wait or set a session, not to go
+hunting for a typo in a handle that was fine.
 
 ## Saving
 

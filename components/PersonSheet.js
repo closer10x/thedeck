@@ -44,6 +44,8 @@ function dateFromISO(s) {
 
 // Instagram throttles the profile endpoint by IP and says so plainly, so a
 // blank grid usually means "wait", not "she has no photos". Worth the words.
+// "not_found" is the one that sends you off to double-check the handle, so the
+// server only says it when something actually looked and came back empty.
 function gridMessage(data) {
   if (data.posts?.length) return '';
   switch (data.status) {
@@ -51,6 +53,10 @@ function gridMessage(data) {
       return data.photo_url
         ? 'Photo saved. Instagram is rate-limiting the grid — try again in a few minutes.'
         : 'Instagram is rate-limiting right now. Try again in a few minutes.';
+    case 'blocked':
+      return data.photo_url
+        ? "Photo saved. Instagram won't show the grid to the server — add the rest below."
+        : "Instagram wouldn't answer the server. Add her photos yourself below.";
     case 'private':
       return 'Her account is private, so no grid. Add her photos yourself below.';
     case 'not_found':
