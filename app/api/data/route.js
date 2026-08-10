@@ -32,7 +32,7 @@ export async function GET(req) {
       people: p.data || [],
       invites: i.data || [],
       // name only — the PIN never leaves the server
-      me: me ? { name: me.name, slug: me.slug } : null,
+      me: me ? { name: me.name, slug: me.slug, legacy: !!me.legacy } : null,
     },
     { headers: NO_STORE }
   );

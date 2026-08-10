@@ -38,12 +38,13 @@ export default function LockPage() {
           const out = await r.json().catch(() => ({}));
           if (out.name) setName(out.name);
           setState('ok');
-          // let the fill-and-glow finish, and the greeting land, before the
-          // page swaps — 420ms was gone before the name could be read
+          // Long enough to actually read your name. The dots finish filling and
+          // glowing at ~470ms, and the greeting rises in after that — at 700ms
+          // the whole thing was over before it registered.
           setTimeout(() => {
             router.replace('/');
             router.refresh();
-          }, 700);
+          }, 1250);
         } else {
           setState('wrong');
           // hold the shake, then clear so the next try starts clean
@@ -70,15 +71,20 @@ export default function LockPage() {
         setPin((p) => p.slice(0, -1));
         return;
       }
-      setPin((p) => {
-        if (p.length >= LENGTH) return p;
-        const next = p + key;
-        if (next.length === LENGTH) submit(next);
-        return next;
-      });
+      // Nothing but the new value goes in here. Submitting from inside the
+      // updater meant React calling it twice — which it is free to do, and does
+      // in development — sent two unlock requests and wrote "Signed in" to the
+      // log twice for one entry of the PIN.
+      setPin((p) => (p.length >= LENGTH ? p : p + key));
     },
-    [state, submit]
+    [state]
   );
+
+  // the fourth digit is what submits, watched here rather than fired from the
+  // updater. `idle` gates it, so a checking or finished attempt can't resubmit.
+  useEffect(() => {
+    if (pin.length === LENGTH && state === 'idle') submit(pin);
+  }, [pin, state, submit]);
 
   // a hardware keyboard should work too — this is a web page, not a phone
   useEffect(() => {
@@ -112,10 +118,12 @@ export default function LockPage() {
         @keyframes pinShake { 0%,100% { transform: translateX(0) } 15% { transform: translateX(-9px) } 30% { transform: translateX(9px) } 45% { transform: translateX(-6px) } 60% { transform: translateX(6px) } 80% { transform: translateX(-2px) } }
         @keyframes pinGlow  { 0% { box-shadow: 0 0 0 0 rgba(75,59,224,.45) } 100% { box-shadow: 0 0 0 16px rgba(75,59,224,0) } }
         @keyframes markIn   { 0% { transform: scale(.7) rotate(-8deg); opacity: 0 } 100% { transform: scale(1) rotate(0); opacity: 1 } }
+        @keyframes sayHi { 0% { transform: translateY(5px); opacity: 0 } 100% { transform: none; opacity: 1 } }
+        .pin-say { animation: sayHi 240ms cubic-bezier(.2,.9,.3,1.2) both; }
         .pin-key { transition: transform 90ms ease, background 140ms ease; }
         .pin-key:active { transform: scale(.92); background: #EEECFD !important; }
         @media (prefers-reduced-motion: reduce) {
-          .pin-dot, .pin-row, .pin-mark { animation: none !important; }
+          .pin-dot, .pin-row, .pin-mark, .pin-say { animation: none !important; }
         }
       `}</style>
 
@@ -148,19 +156,36 @@ export default function LockPage() {
       >
         The Deck
       </h1>
+      {/* The greeting is the PIN telling you who it thinks you are. It gets a
+          size of its own — at 13.5px it read as a status line, and it's the one
+          thing on this screen worth a beat. Fixed height so the pad doesn't
+          shift underneath it when the text grows. */}
       <div
         style={{
-          fontSize: 13.5,
-          color: state === 'wrong' ? C.bad : state === 'ok' ? C.accent : C.muted,
-          fontWeight: state === 'ok' ? 600 : 400,
-          minHeight: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: 26,
         }}
       >
-        {state === 'wrong'
-          ? 'Wrong PIN'
-          : state === 'ok' && name
-            ? `Hey ${name}`
-            : 'Enter your PIN'}
+        <span
+          key={state === 'ok' && name ? `hi-${name}` : state}
+          className="pin-say"
+          style={{
+            fontFamily: state === 'ok' && name ? 'var(--display), sans-serif' : 'inherit',
+            fontSize: state === 'ok' && name ? 19 : 13.5,
+            letterSpacing: state === 'ok' && name ? '-0.03em' : 0,
+            fontWeight: state === 'ok' && name ? 700 : 400,
+            color: state === 'wrong' ? C.bad : state === 'ok' ? C.accent : C.muted,
+            lineHeight: 1.15,
+          }}
+        >
+          {state === 'wrong'
+            ? 'Wrong PIN'
+            : state === 'ok' && name
+              ? `Hey ${name}`
+              : 'Enter your PIN'}
+        </span>
       </div>
 
       {/* dots */}

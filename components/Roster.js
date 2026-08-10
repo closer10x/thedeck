@@ -373,6 +373,30 @@ export default function Roster(props) {
 
       {/* list */}
       <div style={{ padding: 12 }}>
+        {/* Running on the old single-PIN setting: everyone who gets in is
+            "Owner", so the log can't tell you apart. Say so where it'll be
+            seen, rather than letting the names quietly come out wrong. */}
+        {me?.legacy && (
+          <div
+            style={{
+              background: '#FBF3DE',
+              border: '1px solid #F0DFB4',
+              borderRadius: 14,
+              padding: '11px 13px',
+              marginBottom: 12,
+              fontSize: 12.5,
+              lineHeight: 1.5,
+              color: '#7A5A00',
+            }}
+          >
+            Everything here is being logged as <strong>Owner</strong>. Set{' '}
+            <code style={{ fontFamily: 'var(--mono), monospace', fontSize: 11.5 }}>
+              ROLODECK_USERS
+            </code>{' '}
+            in the Vercel environment to <code style={{ fontFamily: 'var(--mono), monospace', fontSize: 11.5 }}>Name:PIN</code> pairs, then redeploy, and each PIN
+            gets its own name.
+          </div>
+        )}
         {showStats && !loading && !error && <Stats rows={rows} invites={invites} />}
         {loading && <Empty text="Loading the deck…" />}
         {error && <Empty text={`Couldn't load: ${error}`} />}

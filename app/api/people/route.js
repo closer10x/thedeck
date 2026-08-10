@@ -99,6 +99,8 @@ export async function POST(req) {
             }`
           : `Updated ${row.name}'s ${andList(labels)}`,
         meta: { fields: changed },
+        // autosave lands several times while you're typing; one entry per sitting
+        coalesce: true,
       });
     }
   }
