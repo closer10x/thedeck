@@ -112,6 +112,7 @@ export default function PersonSheet({
   const [dragging, setDragging] = useState(false);
   const [closing, setClosing] = useState(false);
   const dragStart = useRef(null);
+  const sheetRef = useRef(null);
 
   useEffect(() => {
     const id = requestAnimationFrame(() => setEntered(true));
@@ -123,23 +124,36 @@ export default function PersonSheet({
     setTimeout(onClose, 260); // let it finish sliding before it unmounts
   }, [onClose]);
 
+  // Touch anywhere in the sheet and pull down. The drag only engages once the
+  // content is scrolled to the top and you've actually moved a few pixels, so
+  // tapping a field still focuses it and scrolling a long sheet still scrolls.
   function onGrabStart(e) {
-    dragStart.current = { y: e.clientY, t: Date.now() };
-    setDragging(true);
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    dragStart.current = { y: e.clientY, t: Date.now(), engaged: false };
   }
 
   function onGrabMove(e) {
-    if (!dragStart.current) return;
-    const dy = e.clientY - dragStart.current.y;
-    setDragY(dy > 0 ? dy : dy / 4); // rubber-band upward
+    const start = dragStart.current;
+    if (!start) return;
+    const dy = e.clientY - start.y;
+
+    if (!start.engaged) {
+      if ((sheetRef.current?.scrollTop ?? 0) > 0) return; // still scrolling content
+      if (dy <= 6) return; // a tap, or the start of an upward scroll
+      start.engaged = true;
+      start.y = e.clientY; // measure from where the pull really began
+      setDragging(true);
+      return;
+    }
+    setDragY(Math.max(0, e.clientY - start.y));
   }
 
   function onGrabEnd() {
-    if (!dragStart.current) return;
-    const elapsed = Date.now() - dragStart.current.t;
-    const velocity = dragY / Math.max(elapsed, 1); // px per ms
+    const start = dragStart.current;
     dragStart.current = null;
+    if (!start?.engaged) return;
+
+    const elapsed = Date.now() - start.t;
+    const velocity = dragY / Math.max(elapsed, 1); // px per ms
     setDragging(false);
     // a decisive flick counts even if it didn't travel far
     if (dragY > 110 || velocity > 0.6) requestClose();
@@ -394,13 +408,21 @@ export default function PersonSheet({
       }}
     >
       <div
+        ref={sheetRef}
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={onGrabStart}
+        onPointerMove={onGrabMove}
+        onPointerUp={onGrabEnd}
+        onPointerCancel={onGrabEnd}
         style={{
           width: '100%',
           maxWidth: 480,
           maxHeight: '92dvh',
           overflowY: 'auto',
+          overflowX: 'hidden', // nothing in here should ever scroll sideways
           overscrollBehavior: 'contain',
+          // pan-y so the sheet still scrolls; we only take over at the top
+          touchAction: 'pan-y',
           background: '#fff',
           borderRadius: '20px 20px 0 0',
           padding: '10px 16px calc(24px + env(safe-area-inset-bottom))',
@@ -412,32 +434,28 @@ export default function PersonSheet({
           willChange: 'transform',
         }}
       >
-        {/* grabber — the drag target, with room around it for a thumb */}
+        {/* the whole top block drags — grabber and the name row with it, so
+            there's a thumb-sized target instead of a 4px bar */}
         <div
           onPointerDown={onGrabStart}
           onPointerMove={onGrabMove}
           onPointerUp={onGrabEnd}
           onPointerCancel={onGrabEnd}
-          style={{
-            display: 'flex',
-            justifyContent: 'center',
-            padding: '4px 0 12px',
-            cursor: 'grab',
-            touchAction: 'none',
-          }}
+          style={{ cursor: dragging ? 'grabbing' : 'grab', touchAction: 'none' }}
         >
-          <div
-            style={{
-              width: 38,
-              height: 4,
-              borderRadius: 2,
-              background: dragging ? '#C9C7D2' : '#E9E8EF',
-              transition: 'background 150ms',
-            }}
-          />
-        </div>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '4px 0 12px' }}>
+            <div
+              style={{
+                width: dragging ? 46 : 38,
+                height: 4,
+                borderRadius: 2,
+                background: dragging ? '#B9B7C6' : '#E9E8EF',
+                transition: 'background 150ms, width 150ms',
+              }}
+            />
+          </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
           <input
             ref={fileRef}
             type="file"
@@ -497,6 +515,9 @@ export default function PersonSheet({
             placeholder="Name"
             style={{
               flex: 1,
+              // inputs carry an intrinsic min-width; without this the field
+              // refuses to shrink and shoves the close button off the edge
+              minWidth: 0,
               border: 'none',
               background: 'transparent',
               fontFamily: 'var(--display), sans-serif',
@@ -513,6 +534,7 @@ export default function PersonSheet({
           >
             <X size={20} />
           </button>
+          </div>
         </div>
 
         {/* instagram */}
@@ -663,7 +685,7 @@ export default function PersonSheet({
             );
           })}
 
-          {photos.length < 6 && (
+          {photos.length > 0 && photos.length < 6 && (
             <button
               onClick={() => gridRef.current?.click()}
               disabled={addingPhotos}
@@ -674,34 +696,61 @@ export default function PersonSheet({
                 border: `1.5px dashed #D8D6E2`,
                 borderRadius: 9,
                 background: '#F7F6FA',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 3,
+                color: C.muted,
+                fontSize: 11,
+                fontWeight: 600,
               }}
             >
-              <span
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 3,
-                  color: C.muted,
-                  fontSize: 11,
-                  fontWeight: 600,
-                }}
-              >
-                {addingPhotos ? (
-                  <Loader2 size={17} className="spin" />
-                ) : (
-                  <>
-                    <Plus size={17} />
-                    {photos.length === 0 ? 'Add photos' : 'Add'}
-                  </>
-                )}
-              </span>
+              {addingPhotos ? (
+                <Loader2 size={17} className="spin" />
+              ) : (
+                <>
+                  <Plus size={17} />
+                  Add
+                </>
+              )}
             </button>
           )}
         </div>
+
+        {/* nothing yet: one lonely square looked like a bug, so the empty state
+            is a full-width dropzone instead */}
+        {photos.length === 0 && (
+          <button
+            onClick={() => gridRef.current?.click()}
+            disabled={addingPhotos}
+            style={{
+              width: '100%',
+              marginTop: 10,
+              padding: '18px 0',
+              border: `1.5px dashed #D8D6E2`,
+              borderRadius: 12,
+              background: '#F7F6FA',
+              color: C.muted,
+              fontSize: 12.5,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 7,
+            }}
+          >
+            {addingPhotos ? (
+              <>
+                <Loader2 size={15} className="spin" /> Uploading…
+              </>
+            ) : (
+              <>
+                <Plus size={15} /> Add photos
+              </>
+            )}
+          </button>
+        )}
         <input
           ref={gridRef}
           type="file"

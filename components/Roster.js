@@ -101,20 +101,8 @@ export default function Roster(props) {
       >
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 30,
-                height: 30,
-                borderRadius: 10,
-                background: '#EEECFD',
-                color: C.accent,
-                flexShrink: 0,
-              }}
-            >
-              <Mark size={18} strokeWidth={1.5} />
+            <span style={{ display: 'flex', color: C.accent, flexShrink: 0 }}>
+              <Mark size={25} strokeWidth={1.5} />
             </span>
             <h1
               style={{
