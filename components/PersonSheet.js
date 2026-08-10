@@ -352,6 +352,31 @@ export default function PersonSheet({
     if (!res.error) requestClose();
   }
 
+  // The pill does two jobs off one target, so the single tap has to wait long
+  // enough to find out whether a second one is coming. Browsers keep the user's
+  // activation alive for seconds after a click, so opening the tab this late is
+  // still not treated as a popup — and if one blocks it anyway, go there in
+  // place rather than doing nothing.
+  const igTap = useRef(null);
+
+  function openIg() {
+    if (igTap.current) return; // this is the second tap; editIg will take it
+    igTap.current = setTimeout(() => {
+      igTap.current = null;
+      const url = `https://instagram.com/${draft.ig_handle}`;
+      if (!window.open(url, '_blank', 'noopener,noreferrer')) window.location.href = url;
+    }, 260);
+  }
+
+  function editIg() {
+    clearTimeout(igTap.current);
+    igTap.current = null;
+    setIgOpen(true);
+  }
+
+  // tapping and immediately swiping the sheet away shouldn't open a tab behind it
+  useEffect(() => () => clearTimeout(igTap.current), []);
+
   function submitInvite() {
     if (!person) return;
     onLogInvite(person.id, what, 'pending', dateFromISO(when));
@@ -690,11 +715,13 @@ export default function PersonSheet({
 
         <Label>Instagram</Label>
         {!igOpen ? (
-          // collapsed: the grid below already says who she is, so all that's
-          // left is a way back in
+          // Collapsed, the pill is a link first: the thing you actually want
+          // from a handle is to go and look at it. Editing is the rarer job and
+          // hides behind a second tap.
           <button
-            onClick={() => setIgOpen(true)}
-            title="Edit Instagram"
+            onClick={openIg}
+            onDoubleClick={editIg}
+            title={`Open @${draft.ig_handle} — double-tap to edit`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
