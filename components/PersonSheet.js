@@ -598,7 +598,14 @@ export default function PersonSheet({
               flexShrink: 0,
             }}
           >
-            <Avatar name={draft.name} url={draft.photo_url} size={62} />
+            {/* the camera badge is positioned against the button, not the
+                avatar, so the ring appears inside without moving it */}
+            <Avatar
+              name={draft.name}
+              url={draft.photo_url}
+              size={62}
+              ring={!!draft.ig_handle}
+            />
             <span
               style={{
                 position: 'absolute',

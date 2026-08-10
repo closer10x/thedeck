@@ -212,7 +212,12 @@ function Card({ event, past, onOpen }) {
           <div style={{ display: 'flex' }}>
             {event.guests.slice(0, 5).map((g, i) => (
               <span key={g.id} style={{ marginLeft: i ? -9 : 0, borderRadius: '50%', border: '2px solid #fff', display: 'flex' }}>
-                <Avatar name={g.person?.name || '?'} url={g.person?.photo_url} size={27} />
+                <Avatar
+                  name={g.person?.name || '?'}
+                  url={g.person?.photo_url}
+                  size={27}
+                  ring={!!g.person?.ig_handle}
+                />
               </span>
             ))}
             {event.guests.length > 5 && (

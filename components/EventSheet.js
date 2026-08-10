@@ -361,7 +361,7 @@ export default function EventSheet({
                         textAlign: 'left',
                       }}
                     >
-                      <Avatar name={p.name} url={p.photo_url} size={32} />
+                      <Avatar name={p.name} url={p.photo_url} size={32} ring={!!p.ig_handle} />
                       <span style={{ flex: 1, minWidth: 0, fontSize: 14, color: C.ink }}>{p.name}</span>
                       {/* why she's near the top */}
                       {p.lastYes > 0 && (
@@ -405,7 +405,12 @@ export default function EventSheet({
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Avatar name={person?.name || '?'} url={person?.photo_url} size={34} />
+                    <Avatar
+                      name={person?.name || '?'}
+                      url={person?.photo_url}
+                      size={34}
+                      ring={!!person?.ig_handle}
+                    />
                     <span
                       style={{
                         flex: 1,

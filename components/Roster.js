@@ -929,7 +929,7 @@ function Row({ p, first, onOpen }) {
       }}
     >
       {/* the face is the fastest way to find someone in a list — worth the room */}
-      <Avatar name={p.name} url={p.photo_url} size={62} />
+      <Avatar name={p.name} url={p.photo_url} size={62} ring={!!p.ig_handle} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
