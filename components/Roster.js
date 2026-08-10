@@ -24,9 +24,11 @@ import Stats from './Stats';
 import Mark from './Mark';
 import { daysSince, temp, rate, initials, OUTCOME_EMOJI } from '../lib/format';
 
+// Just asked leads because it's the default — a selected chip sitting second
+// makes the first one look like the one you're on.
 const SORTS = [
-  { id: 'cold', label: 'Coldest' },
   { id: 'recent', label: 'Just asked' },
+  { id: 'cold', label: 'Coldest' },
   { id: 'most', label: 'Most asked' },
   { id: 'rate', label: 'Best rate' },
   { id: 'az', label: 'A–Z' },
@@ -969,12 +971,14 @@ function Row({ p, first, onOpen }) {
         <div style={{ marginTop: 6 }}>
           <FormLine invites={p.invites} />
         </div>
+        {/* the row's only actual data — 11px mono against a 62px face was
+            asking to be squinted at */}
         <div
           style={{
             fontFamily: 'var(--mono), monospace',
-            fontSize: 11,
+            fontSize: 12.5,
             color: 'var(--muted)',
-            marginTop: 4,
+            marginTop: 5,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
