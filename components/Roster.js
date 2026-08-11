@@ -14,6 +14,8 @@ import {
   Moon,
   SunMoon,
   X,
+  ArrowUpDown,
+  Check,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
@@ -56,6 +58,7 @@ export default function Roster(props) {
   const [tab, setTab] = useState('deck'); // 'deck' | 'map' | 'events'
   const [openEventId, setOpenEventId] = useState(null); // event id or 'new'
   const [searchOpen, setSearchOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const searchRef = useRef(null);
 
   // Opening it should put the cursor in it — otherwise revealing the field is
@@ -531,61 +534,62 @@ export default function Roster(props) {
           </div>
         )}
 
-        {/* The toggle floats over the chips rather than taking a slot in the
-            row, so the sorts keep the full width and slide underneath it. */}
-        <div style={{ position: 'relative', marginTop: 10 }}>
-          <div
+        {/* Five chips in a scroller with a toggle floating on top of them was
+            two controls fighting over one row: the last sorts were off-screen
+            and the toggle sat on whatever was under it. One button that names
+            the current sort says more in less space — you can read the state
+            without scrolling to find which chip is filled — and it leaves the
+            toggle a place to sit that isn't on top of something. Same height. */}
+        <div
+          style={{
+            position: 'relative',
+            marginTop: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
+          <button
+            onClick={() => setSortOpen((v) => !v)}
+            aria-expanded={sortOpen}
+            aria-haspopup="listbox"
             style={{
-              display: 'flex',
+              display: 'inline-flex',
+              alignItems: 'center',
               gap: 6,
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              // room to scroll the last chip out from under the toggle
-              paddingRight: 84,
+              padding: '6px 10px 6px 12px',
+              borderRadius: 999,
+              border: `1px solid ${sortOpen ? C.accent : C.line}`,
+              background: C.surface,
+              color: C.ink,
+              fontSize: 12.5,
+              fontWeight: 600,
+              flexShrink: 0,
             }}
           >
-            {SORTS.map((s) => {
-              const on = s.id === sort;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => setSort(s.id)}
-                  style={{
-                    flexShrink: 0,
-                    padding: '6px 11px',
-                    borderRadius: 999,
-                    border: `1px solid ${on ? C.accent : C.line}`,
-                    background: on ? C.accent : C.surface,
-                    color: on ? 'var(--surface)' : C.muted,
-                    fontSize: 12.5,
-                    fontWeight: 500,
-                  }}
-                >
-                  {s.label}
-                </button>
-              );
-            })}
-          </div>
+            <ArrowUpDown size={13} color={C.muted} />
+            {SORTS.find((s) => s.id === sort)?.label}
+            <ChevronDown
+              size={13}
+              color={C.muted}
+              style={{
+                transform: sortOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 180ms ease',
+              }}
+            />
+          </button>
 
+          <div style={{ flex: 1 }} />
+
+          {/* now inline, because there's room for it — no glass, no overlap */}
           <div
             style={{
-              position: 'absolute',
-              right: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              zIndex: 2,
               display: 'flex',
               gap: 3,
               padding: 3,
               borderRadius: 999,
-              // real glass: chips pass underneath and stay visible through it,
-              // just blurred and lifted — no scrim wiping them out first
-              border: '1px solid var(--glass-edge)',
-              background: 'var(--glass-fill)',
-              backdropFilter: 'blur(16px) saturate(180%)',
-              WebkitBackdropFilter: 'blur(16px) saturate(180%)',
-              boxShadow:
-                '0 8px 22px var(--shadow-lift), 0 1px 2px var(--line), inset 0 1px 0 var(--glass-lit)',
+              background: 'var(--segment)',
+              flexShrink: 0,
             }}
           >
             {[
@@ -603,13 +607,13 @@ export default function Roster(props) {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    padding: '6px 9px',
+                    padding: '5px 9px',
                     borderRadius: 999,
                     border: 'none',
-                    background: on ? C.accent : 'transparent',
-                    color: on ? 'var(--surface)' : C.muted,
-                    boxShadow: on ? '0 2px 8px var(--accent-glow)' : 'none',
-                    transition: 'background 170ms ease, color 170ms ease, box-shadow 170ms ease',
+                    background: on ? C.surface : 'transparent',
+                    color: on ? C.accent : C.muted,
+                    boxShadow: on ? '0 1px 3px var(--shadow)' : 'none',
+                    transition: 'background 170ms ease, color 170ms ease',
                   }}
                 >
                   <Icon size={15} />
@@ -617,6 +621,62 @@ export default function Roster(props) {
               );
             })}
           </div>
+
+          {sortOpen && (
+            <>
+              {/* tap anywhere else to put it away */}
+              <div
+                onClick={() => setSortOpen(false)}
+                style={{ position: 'fixed', inset: 0, zIndex: 8 }}
+              />
+              <div
+                role="listbox"
+                style={{
+                  position: 'absolute',
+                  top: 38,
+                  left: 0,
+                  zIndex: 9,
+                  minWidth: 170,
+                  background: C.surface,
+                  border: `1px solid ${C.line}`,
+                  borderRadius: 14,
+                  boxShadow: '0 12px 34px var(--shadow-lift)',
+                  overflow: 'hidden',
+                }}
+              >
+                {SORTS.map((s) => {
+                  const on = s.id === sort;
+                  return (
+                    <button
+                      key={s.id}
+                      role="option"
+                      aria-selected={on}
+                      onClick={() => {
+                        setSort(s.id);
+                        setSortOpen(false);
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        width: '100%',
+                        padding: '10px 13px',
+                        border: 'none',
+                        background: on ? 'var(--accent-tint)' : 'transparent',
+                        color: on ? C.accent : C.ink,
+                        fontSize: 13.5,
+                        fontWeight: on ? 650 : 500,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <Check size={14} style={{ opacity: on ? 1 : 0, flexShrink: 0 }} />
+                      {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
           </>
         )}
