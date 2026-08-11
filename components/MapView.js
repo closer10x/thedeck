@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { MapPin, ExternalLink } from 'lucide-react';
 import Avatar from './Avatar';
+import MapCanvas, { hasInteractiveMap } from './MapCanvas';
 
 const C = {
   surface: 'var(--surface)',
@@ -58,6 +59,21 @@ export default function MapView({ people, onOpen }) {
           ? 'Nobody has a city yet. Open someone and fill in From — she shows up here once Google has placed it.'
           : 'Nobody on the deck yet.'}
       </Note>
+    );
+  }
+
+  // A real draggable map when there's a browser key to load it with, and the
+  // server-drawn picture when there isn't. Same pins either way — the only
+  // difference is whether you can move it.
+  if (hasInteractiveMap) {
+    return (
+      <>
+        <div style={{ marginBottom: 14 }}>
+          <MapCanvas people={placed} onOpen={onOpen} />
+        </div>
+        <Cities byCity={byCity} onOpen={onOpen} />
+        <Unplaced n={unplaced.length} />
+      </>
     );
   }
 
@@ -132,98 +148,107 @@ export default function MapView({ people, onOpen }) {
         )}
       </div>
 
-      {byCity.map(([city, group]) => (
-        <div key={city} style={{ marginBottom: 16 }}>
-          <div
+      <Cities byCity={byCity} onOpen={onOpen} />
+      <Unplaced n={unplaced.length} />
+    </>
+  );
+}
+
+// The list under the map, whichever map is above it.
+function Cities({ byCity, onOpen }) {
+  return byCity.map(([city, group]) => (
+    <div key={city} style={{ marginBottom: 16 }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          fontFamily: 'var(--mono), monospace',
+          fontSize: 10.5,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: C.muted,
+          marginBottom: 8,
+        }}
+      >
+        <MapPin size={12} /> {city} · {group.length}
+      </div>
+
+      <div
+        style={{
+          background: C.surface,
+          borderRadius: 16,
+          border: `1px solid ${C.line}`,
+          overflow: 'hidden',
+        }}
+      >
+        {group.map((p, i) => (
+          <button
+            key={p.id}
+            onClick={() => onOpen(p.id)}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              fontFamily: 'var(--mono), monospace',
-              fontSize: 10.5,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: C.muted,
-              marginBottom: 8,
+              gap: 12,
+              width: '100%',
+              padding: '12px 14px',
+              background: 'transparent',
+              border: 'none',
+              borderTop: i ? '1px solid var(--hairline)' : 'none',
+              textAlign: 'left',
             }}
           >
-            <MapPin size={12} /> {city} · {group.length}
-          </div>
+            <Avatar name={p.name} url={p.photo_url} size={42} ring={!!p.ig_handle} />
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: 'var(--display), sans-serif',
+                fontSize: 16,
+                fontWeight: 600,
+                letterSpacing: '-0.015em',
+                color: C.ink,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {p.name}
+            </span>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Open ${p.name}'s city in Google Maps`}
+              style={{ display: 'flex', color: 'var(--faint)', padding: 4 }}
+            >
+              <ExternalLink size={14} />
+            </a>
+          </button>
+        ))}
+      </div>
+    </div>
+  ));
+}
 
-          <div
-            style={{
-              background: C.surface,
-              borderRadius: 16,
-              border: `1px solid ${C.line}`,
-              overflow: 'hidden',
-            }}
-          >
-            {group.map((p, i) => (
-              <button
-                key={p.id}
-                onClick={() => onOpen(p.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  width: '100%',
-                  padding: '12px 14px',
-                  background: 'transparent',
-                  border: 'none',
-                  borderTop: i ? '1px solid var(--hairline)' : 'none',
-                  textAlign: 'left',
-                }}
-              >
-                <Avatar name={p.name} url={p.photo_url} size={42} ring={!!p.ig_handle} />
-                <span
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    fontFamily: 'var(--display), sans-serif',
-                    fontSize: 16,
-                    fontWeight: 600,
-                    letterSpacing: '-0.015em',
-                    color: C.ink,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {p.name}
-                </span>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  aria-label={`Open ${p.name}'s city in Google Maps`}
-                  style={{ display: 'flex', color: 'var(--faint)', padding: 4 }}
-                >
-                  <ExternalLink size={14} />
-                </a>
-              </button>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      {/* Said plainly rather than left as a silent absence — otherwise the map
-          looks like the whole deck and quietly isn't. */}
-      {unplaced.length > 0 && (
-        <div
-          style={{
-            fontSize: 12.5,
-            color: C.muted,
-            textAlign: 'center',
-            padding: '4px 8px 8px',
-            lineHeight: 1.5,
-          }}
-        >
-          {unplaced.length} {unplaced.length === 1 ? 'person has' : 'people have'} no city yet, so
-          {unplaced.length === 1 ? " she isn't" : " they aren't"} on the map.
-        </div>
-      )}
-    </>
+// Said plainly rather than left as a silent absence — otherwise the map looks
+// like the whole deck and quietly isn't.
+function Unplaced({ n }) {
+  if (!n) return null;
+  return (
+    <div
+      style={{
+        fontSize: 12.5,
+        color: C.muted,
+        textAlign: 'center',
+        padding: '4px 8px 8px',
+        lineHeight: 1.5,
+      }}
+    >
+      {n} {n === 1 ? 'person has' : 'people have'} no city yet, so
+      {n === 1 ? " she isn't" : " they aren't"} on the map.
+    </div>
   );
 }
 
