@@ -21,6 +21,11 @@ create table if not exists people (
 
 -- create table if not exists won't add columns to an existing people table
 alter table people add column if not exists phone text;
+-- where she's from: the text you typed, plus Google's answer for it, so the
+-- map never has to geocode again
+alter table people add column if not exists city text;
+alter table people add column if not exists lat double precision;
+alter table people add column if not exists lng double precision;
 alter table people add column if not exists photos jsonb default '[]'::jsonb;
 alter table people add column if not exists photos_synced_at timestamptz;
 

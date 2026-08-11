@@ -11,7 +11,21 @@ const NO_STORE = { 'cache-control': 'no-store, max-age=0' };
 // is logged by /api/upload where it happens, and the weekly Instagram re-pull
 // writes photos on its own, so diffing them here would fill the log with
 // "updated photos" nobody did.
-const LOGGED = ['name', 'ig_handle', 'phone', 'note', 'rat_chat'];
+const LOGGED = ['name', 'ig_handle', 'phone', 'note', 'rat_chat', 'city'];
+
+// Coordinates are Google's answer for whatever city was typed, not something
+// anyone enters by hand — so they're stored, but never diffed for the log.
+// "Jon updated her latitude" describes the geocoder, not Jon.
+function coord(v) {
+  // Number(null) is 0, not NaN — so a row saved with no location would land at
+  // 0,0, which is a real spot in the Atlantic and would put half the deck on a
+  // pin in the Gulf of Guinea. Absent has to be checked before converting.
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  // 0,0 is only ever this bug, never an answer Google gave
+  if (!Number.isFinite(n)) return null;
+  return n;
+}
 
 // Only these ever reach the database. Whatever else the client sends is
 // dropped, so a stray field can't become a column write — created_by included,
@@ -25,6 +39,14 @@ function sanitize(body) {
     photos_synced_at: body.photos_synced_at || null,
     photo_url: body.photo_url || null,
     note: body.note || null,
+    city: body.city || null,
+    // both or neither: half a coordinate is not a place
+    ...(() => {
+      const lat = coord(body.lat);
+      const lng = coord(body.lng);
+      const paired = lat !== null && lng !== null;
+      return { lat: paired ? lat : null, lng: paired ? lng : null };
+    })(),
     rat_chat: !!body.rat_chat,
     archived: !!body.archived,
   };

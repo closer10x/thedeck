@@ -13,6 +13,7 @@ import {
   CalendarDays,
   History,
   ChevronRight,
+  MapPin,
 } from 'lucide-react';
 import Avatar from './Avatar';
 import ActivityLog from './ActivityLog';
@@ -87,6 +88,9 @@ export default function PersonSheet({
       phone: '',
       photo_url: '',
       note: '',
+      city: '',
+      lat: null,
+      lng: null,
       rat_chat: false,
     }
   );
@@ -351,6 +355,67 @@ export default function PersonSheet({
     const res = await flush(); // same serialized path, so it can't race the debounce
     if (!res.error) requestClose();
   }
+
+  // --- where she's from ----------------------------------------------------
+  // Typing suggests, picking geocodes. Only the pick costs a Google lookup, and
+  // only the pick is trusted to place her: free text stays as text, and she
+  // simply doesn't appear on the map until a real place has been chosen.
+  const [cities, setCities] = useState([]);
+  const [cityMsg, setCityMsg] = useState('');
+  const [locating, setLocating] = useState(false);
+  const citySeq = useRef(0);
+  const cityTimer = useRef(null);
+
+  function onCityChange(v) {
+    set('city', v);
+    // editing the text un-pins her: the old coordinates belong to the old place
+    if (draft.lat != null) {
+      set('lat', null);
+      set('lng', null);
+    }
+    setCityMsg('');
+
+    const seq = ++citySeq.current;
+    clearTimeout(cityTimer.current);
+    cityTimer.current = setTimeout(async () => {
+      if (v.trim().length < 3) return setCities([]);
+      try {
+        const r = await fetch(`/api/places?q=${encodeURIComponent(v)}`);
+        const out = await r.json();
+        if (seq === citySeq.current) setCities(out.suggestions || []);
+      } catch {
+        setCities([]);
+      }
+    }, 300);
+  }
+
+  async function pickCity(c) {
+    setCities([]);
+    set('city', c.main);
+    setLocating(true);
+    setCityMsg('');
+    try {
+      // the secondary line is the country/region — it disambiguates the
+      // Tampas of this world, so geocode with it rather than the name alone
+      const q = [c.main, c.secondary].filter(Boolean).join(', ');
+      const out = await (await fetch(`/api/geocode?q=${encodeURIComponent(q)}`)).json();
+      if (out.lat != null) {
+        set('lat', out.lat);
+        set('lng', out.lng);
+      } else {
+        setCityMsg(
+          out.error === 'upstream'
+            ? "Google wouldn't place that — the key may not have Places enabled."
+            : "Couldn't find that on the map. The name is saved anyway."
+        );
+      }
+    } catch {
+      setCityMsg("Couldn't reach the server. The name is saved anyway.");
+    }
+    setLocating(false);
+  }
+
+  useEffect(() => () => clearTimeout(cityTimer.current), []);
 
   // The pill does two jobs off one target, so the single tap has to wait long
   // enough to find out whether a second one is coming. Browsers keep the user's
@@ -976,6 +1041,81 @@ export default function PersonSheet({
               </button>
             );
           })}
+        </div>
+
+        {/* where she's from — the map's whole input */}
+        <Label>From</Label>
+        <div style={{ position: 'relative' }}>
+          <MapPin
+            size={15}
+            color={draft.lat != null ? C.accent : C.muted}
+            style={{ position: 'absolute', left: 12, top: 13, pointerEvents: 'none' }}
+          />
+          <input
+            value={draft.city || ''}
+            onChange={(e) => onCityChange(e.target.value)}
+            onBlur={() => setTimeout(() => setCities([]), 150)}
+            placeholder="Her city — Tampa, Palm Beach…"
+            style={{ ...inputStyle, paddingLeft: 34, paddingRight: 34 }}
+          />
+          {locating && (
+            <Loader2
+              size={14}
+              color={C.muted}
+              className="spin"
+              style={{ position: 'absolute', right: 12, top: 13 }}
+            />
+          )}
+          {/* a pin only appears once Google has actually placed her */}
+          {!locating && draft.lat != null && (
+            <Check size={15} color="var(--good)" style={{ position: 'absolute', right: 12, top: 13 }} />
+          )}
+
+          {cities.length > 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                zIndex: 3,
+                marginTop: 4,
+                background: 'var(--surface)',
+                border: `1px solid ${C.line}`,
+                borderRadius: 12,
+                boxShadow: '0 12px 30px var(--shadow-lift)',
+                overflow: 'hidden',
+              }}
+            >
+              {cities.map((c, i) => (
+                <button
+                  key={i}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => pickCity(c)}
+                  style={{
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '10px 12px',
+                    border: 'none',
+                    background: 'transparent',
+                    fontSize: 13.5,
+                  }}
+                >
+                  <div style={{ color: C.ink }}>{c.main}</div>
+                  {c.secondary && (
+                    <div style={{ fontSize: 11.5, color: C.muted }}>{c.secondary}</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ fontSize: 11.5, color: C.muted, marginTop: 5 }}>
+          {cityMsg ||
+            (draft.lat != null
+              ? 'Pinned on the map.'
+              : 'Pick a suggestion to put her on the map.')}
         </div>
 
         {/* note */}

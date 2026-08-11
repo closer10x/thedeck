@@ -19,6 +19,7 @@ import Avatar from './Avatar';
 import PersonSheet from './PersonSheet';
 import Events from './Events';
 import EventSheet from './EventSheet';
+import MapView from './MapView';
 import ActivityLog from './ActivityLog';
 import Stats from './Stats';
 import Mark from './Mark';
@@ -52,7 +53,7 @@ export default function Roster(props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showLog, setShowLog] = useState(false);
   // the deck is who you could ask; events are what came of it
-  const [tab, setTab] = useState('deck'); // 'deck' | 'events'
+  const [tab, setTab] = useState('deck'); // 'deck' | 'map' | 'events'
   const [openEventId, setOpenEventId] = useState(null); // event id or 'new'
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef(null);
@@ -185,6 +186,7 @@ export default function Roster(props) {
     }));
   }, [people, invites]);
 
+  const placedCount = everyone.filter((p) => !p.archived && p.lat != null && p.lng != null).length;
   const owed = rows.filter((r) => r.days === null || r.days > 21).length;
   // re-read her off the fresh rows every render so the invite list stays live
   const openPerson = openId && openId !== 'new' ? rows.find((r) => r.id === openId) : null;
@@ -439,6 +441,7 @@ export default function Roster(props) {
         >
           {[
             { id: 'deck', label: 'Deck', count: rows.length },
+            { id: 'map', label: 'Map', count: placedCount },
             { id: 'events', label: 'Events', count: events.length },
           ].map((t) => {
             const on = tab === t.id;
@@ -645,6 +648,8 @@ export default function Roster(props) {
             gets its own name.
           </div>
         )}
+        {tab === 'map' && <MapView people={everyone} onOpen={setOpenId} />}
+
         {tab === 'events' && (
           <Events
             events={events}
@@ -705,10 +710,12 @@ export default function Roster(props) {
       >
         {/* one button, and it does whatever the tab you're on is for */}
         <button
-          onClick={() => (tab === 'deck' ? setOpenId('new') : setOpenEventId('new'))}
+          // Events is the only tab whose plus makes an event. The map is a view
+          // of people, so its plus adds a person, same as the deck's.
+          onClick={() => (tab === 'events' ? setOpenEventId('new') : setOpenId('new'))}
           disabled={tab === 'events' && eventsState === 'missing'}
-          aria-label={tab === 'deck' ? 'Add someone' : 'New event'}
-          title={tab === 'deck' ? 'Add someone' : 'New event'}
+          aria-label={tab === 'events' ? 'New event' : 'Add someone'}
+          title={tab === 'events' ? 'New event' : 'Add someone'}
           style={{
             pointerEvents: 'auto',
             width: 60,
