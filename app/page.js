@@ -158,7 +158,9 @@ export default function Page() {
     async (person) => {
       const out = await api('/api/people', json(person));
       await load();
-      return { error: out.error || null, id: out.id || person.id || null };
+      // `axe` comes back as 'missing' when the database predates that column
+      // and the write went through without it — the sheet says what to run.
+      return { error: out.error || null, id: out.id || person.id || null, axe: out.axe || null };
     },
     [load]
   );

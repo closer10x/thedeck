@@ -17,6 +17,7 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
+import Axe from './Axe';
 import { ago, initials } from '../lib/format';
 
 const C = {
@@ -34,6 +35,10 @@ const LOOK = {
   'person.add': { Icon: UserPlus, color: 'var(--good)', bg: 'var(--good-tint)' },
   'person.update': { Icon: Pencil, color: 'var(--accent)', bg: 'var(--accent-tint)' },
   'person.remove': { Icon: Trash2, color: C.bad, bg: 'var(--bad-tint)' },
+  // the axe keeps its own steel rather than taking the row's colour — it's the
+  // one glyph in here that's a drawing instead of a line icon
+  'person.axe': { Icon: Axe, color: C.bad, bg: 'var(--bad-tint)' },
+  'person.unaxe': { Icon: Axe, color: 'var(--muted)', bg: 'var(--tint)' },
   'person.archive': { Icon: Archive, color: 'var(--warn)', bg: 'var(--warn-tint)' },
   'person.unarchive': { Icon: ArchiveRestore, color: 'var(--good)', bg: 'var(--good-tint)' },
   'ask.add': { Icon: Send, color: 'var(--accent)', bg: 'var(--accent-tint)' },

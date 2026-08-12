@@ -15,6 +15,7 @@ create table if not exists people (
   photo_url text,
   note text,
   rat_chat boolean default false,        -- is she in the rat chat
+  axed boolean default false,            -- her photo shows up smashed
   archived boolean default false,
   created_at timestamptz default now()
 );
@@ -28,6 +29,7 @@ alter table people add column if not exists lat double precision;
 alter table people add column if not exists lng double precision;
 alter table people add column if not exists photos jsonb default '[]'::jsonb;
 alter table people add column if not exists photos_synced_at timestamptz;
+alter table people add column if not exists axed boolean default false;
 
 create table if not exists invites (
   id uuid primary key default gen_random_uuid(),

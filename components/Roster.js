@@ -18,6 +18,8 @@ import {
   Check,
 } from 'lucide-react';
 import Avatar from './Avatar';
+import Axe from './Axe';
+import Smash from './Smash';
 import PersonSheet from './PersonSheet';
 import Events from './Events';
 import EventSheet from './EventSheet';
@@ -81,6 +83,16 @@ export default function Roster(props) {
   // hold the id, not the row object — rows are rebuilt on every reload, so a
   // captured object goes stale the moment you log an ask from inside the sheet
   const [openId, setOpenId] = useState(null); // person id or 'new'
+
+  // Who just got the axe. The swing happens inside her sheet, which is covering
+  // the row it's supposed to smash — so the row is told to play it again once
+  // the sheet is out of the way, and forgotten a beat later.
+  const [smashId, setSmashId] = useState(null);
+  useEffect(() => {
+    if (!smashId || openId) return;
+    const t = setTimeout(() => setSmashId(null), 1600);
+    return () => clearTimeout(t);
+  }, [smashId, openId]);
 
   // Grid is faces, list is facts — which one you want depends on whether you're
   // browsing or working the queue, so it's a toggle rather than a decision.
@@ -732,7 +744,12 @@ export default function Roster(props) {
           (view === 'grid' ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               {rows.map((p) => (
-                <Card key={p.id} p={p} onOpen={() => setOpenId(p.id)} />
+                <Card
+                  key={p.id}
+                  p={p}
+                  smash={smashId === p.id && !openId}
+                  onOpen={() => setOpenId(p.id)}
+                />
               ))}
             </div>
           ) : (
@@ -745,7 +762,13 @@ export default function Roster(props) {
               }}
             >
               {rows.map((p, i) => (
-                <Row key={p.id} p={p} first={i === 0} onOpen={() => setOpenId(p.id)} />
+                <Row
+                  key={p.id}
+                  p={p}
+                  first={i === 0}
+                  smash={smashId === p.id && !openId}
+                  onOpen={() => setOpenId(p.id)}
+                />
               ))}
             </div>
           ))}
@@ -807,6 +830,7 @@ export default function Roster(props) {
           onSetOutcome={props.onSetOutcome}
           onSetInviteNote={props.onSetInviteNote}
           onDeleteInvite={props.onDeleteInvite}
+          onAxe={setSmashId}
           events={events}
           guests={guests}
           onOpenEvent={(id) => {
@@ -872,7 +896,7 @@ function lastAsked(iso) {
 
 // Two to a row: her face and her name, nothing else. The day badge rides the
 // corner of the photo so the card stays a photo rather than a data row.
-function Card({ p, onOpen }) {
+function Card({ p, smash, onOpen }) {
   const t = temp(p.days);
   return (
     <button
@@ -891,38 +915,40 @@ function Card({ p, onOpen }) {
       }}
     >
       <div style={{ position: 'relative', width: '100%', aspectRatio: '1 / 1' }}>
-        {p.photo_url ? (
-          <img
-            src={p.photo_url}
-            alt=""
-            loading="lazy"
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              borderRadius: 12,
-              background: 'var(--accent-tint)',
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              borderRadius: 12,
-              background: 'var(--accent-tint)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontFamily: 'var(--display), sans-serif',
-              fontSize: 30,
-              fontWeight: 600,
-              color: C.accent,
-            }}
-          >
-            {initials(p.name) || '?'}
-          </div>
-        )}
+        <Smash axed={p.axed} replay={smash} src={p.photo_url} radius={12}>
+          {p.photo_url ? (
+            <img
+              src={p.photo_url}
+              alt=""
+              loading="lazy"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                borderRadius: 12,
+                background: 'var(--accent-tint)',
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                borderRadius: 12,
+                background: 'var(--accent-tint)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontFamily: 'var(--display), sans-serif',
+                fontSize: 30,
+                fontWeight: 600,
+                color: C.accent,
+              }}
+            >
+              {initials(p.name) || '?'}
+            </div>
+          )}
+        </Smash>
 
         <span
           title={p.days === null ? 'Never asked' : `${p.days} days since the last ask`}
@@ -962,6 +988,27 @@ function Card({ p, onOpen }) {
             {'🐀'}
           </span>
         )}
+
+        {/* the smashed photo says it loudly; this says it in the same place
+            every time, so the axed ones can be picked out at a glance */}
+        {p.axed && (
+          <span
+            title="Axed"
+            style={{
+              position: 'absolute',
+              left: 6,
+              bottom: 6,
+              display: 'inline-flex',
+              background: 'rgba(255,255,255,0.92)',
+              borderRadius: 7,
+              padding: '3px 5px',
+              lineHeight: 0,
+              boxShadow: '0 1px 3px var(--shadow)',
+            }}
+          >
+            <Axe size={14} />
+          </span>
+        )}
       </div>
 
       <div
@@ -983,7 +1030,7 @@ function Card({ p, onOpen }) {
   );
 }
 
-function Row({ p, first, onOpen }) {
+function Row({ p, first, smash, onOpen }) {
   const t = temp(p.days);
   return (
     <button
@@ -1001,7 +1048,9 @@ function Row({ p, first, onOpen }) {
       }}
     >
       {/* the face is the fastest way to find someone in a list — worth the room */}
-      <Avatar name={p.name} url={p.photo_url} size={62} ring={!!p.ig_handle} />
+      <Smash axed={p.axed} replay={smash} src={p.photo_url} size={62}>
+        <Avatar name={p.name} url={p.photo_url} size={62} ring={!!p.ig_handle} />
+      </Smash>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -1031,6 +1080,21 @@ function Row({ p, first, onOpen }) {
               }}
             >
               {'\uD83D\uDC00'}
+            </span>
+          )}
+          {p.axed && (
+            <span
+              title="Axed"
+              style={{
+                display: 'inline-flex',
+                background: 'var(--bad-tint)',
+                borderRadius: 5,
+                padding: '3px 5px',
+                flexShrink: 0,
+                lineHeight: 0,
+              }}
+            >
+              <Axe size={13} />
             </span>
           )}
         </div>

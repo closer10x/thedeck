@@ -6,6 +6,7 @@ A personal CRM for the people you keep meaning to invite out. Mobile-first, list
 
 - Last invited, total asks, and accept rate
 - A Rat Chat yes/no (🐀 shows on the row when yes)
+- An axe, for when she's done — her photo shows up smashed
 - One short note per person, plus a phone number
 - Up to six photos each — pulled from Instagram or added by hand
 - Every ask with an outcome: waiting / yes / no / ghosted, and the date it happened
@@ -16,11 +17,36 @@ A personal CRM for the people you keep meaning to invite out. Mobile-first, list
 - The emoji strip is the last five asks, newest on the right: ✅ yes · ⏳ waiting · ❌ no · 👻 ghosted
 - Tap the header count to open a stats panel: hit rate, gone cold, typical gap, and asks per week over 12 weeks
 
+## The axe
+
+Some people come off the deck. **Axe** is the switch in her sheet for the ones
+who haven't earned a deletion but have stopped being a name you'd call: flip it
+and an axe swings in and buries itself in her face, the photo cracks apart, and
+pieces of it fly off the card.
+
+What's left is the point. Her photo stays smashed everywhere the deck shows it —
+in the grid, in the list, at the top of her own sheet — with the axe still in it
+and a small one on her row beside her name. Flip it back and the picture is whole
+again; nothing is destroyed, and the photo itself is never touched. It's a mark
+on a row, not an edit to a file.
+
+The swing plays where you can see it. Flipping the switch smashes the face at the
+top of the sheet immediately, and the row underneath — which the sheet is
+covering — plays its own once you've closed it. Everyone who was already axed
+before the list loaded simply appears broken, without a swing: replaying every
+smash on every refresh would turn the roster into a woodshed. With **reduced
+motion** on, nobody gets a swing at all — just the aftermath.
+
+Existing databases need `supabase/axe.sql` run once in the SQL editor. Until then
+saving still works: the write goes through without the axe and her sheet says
+what to run, rather than one missing column quietly breaking every save.
+
 ## Setup
 
 1. `npm install`
 2. Copy `.env.local.example` to `.env.local` and fill it in
-3. Run `supabase/schema.sql` in the Supabase SQL editor
+3. Run `supabase/schema.sql` in the Supabase SQL editor (existing databases:
+   `supabase/events.sql`, `supabase/activity-log.sql` and `supabase/axe.sql` too)
 4. Create a **public** Storage bucket named `avatars` from the dashboard
 5. `npm run dev`
 
@@ -81,9 +107,9 @@ then the tab says so and refuses to make an event it couldn't save.
 ## The log
 
 Every write is recorded in the `activity` table under the name of whoever's PIN
-signed in: adding, editing, archiving and deleting people, asks and their outcomes
-and notes, photo uploads, and signing in and out. Read the whole thing from the
-header chip, or one person's from the History link in her sheet. Asks show
+signed in: adding, editing, archiving and deleting people, taking the axe to one
+and pulling it back out, asks and their outcomes and notes, photo uploads, and
+signing in and out. Read the whole thing from the header chip, or one person's from the History link in her sheet. Asks show
 **Logged by**, and people show who added them.
 
 Edits are diffed against the stored row before anything is written, so autosave

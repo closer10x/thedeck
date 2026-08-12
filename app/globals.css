@@ -187,6 +187,74 @@ input[type='date']::-webkit-calendar-picker-indicator {
 .spin { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* The axe. One swing, and everything else keyed off the moment it lands —
+   44% of 1250ms, which is why every delay below is ~550ms. The chop is the
+   spine of it: the axe starts off the top right and arrives at no transform
+   at all, because "no transform" is the pose the picture keeps afterwards.
+   An animation that ended anywhere else would jump when it finished. */
+@keyframes smash-chop {
+  0% {
+    transform: translate(128%, -158%) rotate(-74deg);
+    opacity: 0;
+    /* falling, so it gathers speed on the way down */
+    animation-timing-function: cubic-bezier(0.55, 0, 0.95, 0.42);
+  }
+  12% { opacity: 1; }
+  44% {
+    transform: translate(0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.2, 1);
+  }
+  /* it bites, kicks back off the bone, and settles into the wound */
+  54% { transform: translate(3%, -5%) rotate(4deg); }
+  66%, 100% { transform: translate(0, 0) rotate(0deg); }
+}
+.smash-chop { animation: smash-chop 1250ms both; }
+
+/* the face takes it: a hard jolt on impact, shaken off in a few hundred ms */
+@keyframes smash-jolt {
+  0%, 41% { transform: none; }
+  46% { transform: translate(-3%, 2%) rotate(-2deg) scale(0.965); }
+  52% { transform: translate(2%, -1.2%) rotate(1.2deg) scale(1.015); }
+  58% { transform: translate(-1%, 0.6%) rotate(-0.5deg); }
+  66%, 100% { transform: none; }
+}
+.smash-jolt { animation: smash-jolt 1250ms ease-out both; }
+
+/* Cracks run outward from the blade. Every path carries pathLength="100", so
+   one dash length draws them all at the same rate however long they really
+   are. Outside the playing state there's no dasharray at all — someone who was
+   already axed when the list loaded is simply broken, not mid-break. */
+.smash-cracks.smash-play path {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: smash-crack 300ms cubic-bezier(0.16, 0.9, 0.3, 1) 550ms both;
+}
+@keyframes smash-crack { to { stroke-dashoffset: 0; } }
+.smash-cracks.smash-play .smash-bruise { animation: smash-bruise 320ms ease-out 545ms both; }
+@keyframes smash-bruise { from { opacity: 0; } to { opacity: 1; } }
+
+/* the pieces that leave, each one thrown its own way by its own variables */
+@keyframes smash-shard {
+  0% { transform: none; opacity: 0; }
+  0.1%, 62% { opacity: 1; }
+  100% {
+    transform: translate(var(--smash-dx), var(--smash-dy)) rotate(var(--smash-rot)) scale(0.5);
+    opacity: 0;
+  }
+}
+.smash-shard { animation: smash-shard 640ms cubic-bezier(0.12, 0.62, 0.3, 1) 550ms both; }
+
+/* the white of the impact itself, gone in a third of a second */
+@keyframes smash-flash {
+  0% { opacity: 0; transform: scale(0.35); }
+  22% { opacity: 0.9; }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+.smash-flash {
+  animation: smash-flash 340ms ease-out 535ms both;
+  mix-blend-mode: screen;
+}
+
 /* Glass — one treatment for every surface that floats over the roster: the
    sticky header, the add bar, the sheet. Content passes underneath and stays
    readable through it rather than being hidden behind a solid panel.

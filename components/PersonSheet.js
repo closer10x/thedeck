@@ -16,6 +16,8 @@ import {
   MapPin,
 } from 'lucide-react';
 import Avatar from './Avatar';
+import Axe from './Axe';
+import Smash from './Smash';
 import ActivityLog from './ActivityLog';
 import { STATUSES } from './EventSheet';
 import { parseHandle, formatUSPhone, OUTCOME_EMOJI } from '../lib/format';
@@ -76,6 +78,7 @@ export default function PersonSheet({
   onSetOutcome,
   onSetInviteNote,
   onDeleteInvite,
+  onAxe,
   events = [],
   guests = [],
   onOpenEvent,
@@ -92,6 +95,7 @@ export default function PersonSheet({
       lat: null,
       lng: null,
       rat_chat: false,
+      axed: false,
     }
   );
   const [paste, setPaste] = useState(person?.ig_handle ? `@${person.ig_handle}` : '');
@@ -104,6 +108,8 @@ export default function PersonSheet({
   const [addingPhotos, setAddingPhotos] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
+  // the server strips `axed` and says so when the column isn't there yet
+  const [axeMissing, setAxeMissing] = useState(false);
   const [places, setPlaces] = useState([]);
   const [placesMsg, setPlacesMsg] = useState('');
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -238,6 +244,7 @@ export default function PersonSheet({
 
     saving.current = false;
     if (alive.current) {
+      if (!res.error) setAxeMissing(res.axe === 'missing');
       setSaveState(res.error ? 'error' : 'saved');
       setSaveMsg(res.error ? `Could not save: ${res.error}` : '');
       if (!res.error) setTimeout(() => setSaveState('idle'), 1400);
@@ -277,6 +284,16 @@ export default function PersonSheet({
     return () => clearTimeout(saveTimer.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
+
+  // The swing plays here the moment you flip it, on the face at the top of the
+  // sheet. The row underneath is covered by the sheet, so it's told separately
+  // to play its own once you've closed it — otherwise the smash you asked for
+  // happens where you can't see it.
+  function toggleAxe() {
+    const next = !draft.axed;
+    set('axed', next);
+    if (next && person?.id) onAxe?.(person.id);
+  }
 
   // Google Places, debounced so a burst of keystrokes is one billed call.
   // Silent by design: no key, no network, no suggestions — just a text box.
@@ -690,12 +707,14 @@ export default function PersonSheet({
           >
             {/* the camera badge is positioned against the button, not the
                 avatar, so the ring appears inside without moving it */}
-            <Avatar
-              name={draft.name}
-              url={draft.photo_url}
-              size={62}
-              ring={!!draft.ig_handle}
-            />
+            <Smash axed={draft.axed} src={draft.photo_url} size={62}>
+              <Avatar
+                name={draft.name}
+                url={draft.photo_url}
+                size={62}
+                ring={!!draft.ig_handle}
+              />
+            </Smash>
             <span
               style={{
                 position: 'absolute',
@@ -1042,6 +1061,87 @@ export default function PersonSheet({
             );
           })}
         </div>
+
+        {/* the axe */}
+        <Label>Axe</Label>
+        <button
+          role="switch"
+          aria-checked={!!draft.axed}
+          onClick={toggleAxe}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 11,
+            width: '100%',
+            textAlign: 'left',
+            padding: '11px 12px',
+            borderRadius: 12,
+            border: `1px solid ${draft.axed ? 'var(--bad-line)' : C.line}`,
+            background: draft.axed ? 'var(--bad-panel)' : 'var(--field)',
+          }}
+        >
+          <span
+            style={{
+              display: 'inline-flex',
+              width: 30,
+              height: 30,
+              flexShrink: 0,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 9,
+              background: draft.axed ? 'var(--bad-tint)' : 'var(--surface)',
+              border: `1px solid ${draft.axed ? 'var(--bad-line)' : C.line}`,
+            }}
+          >
+            <Axe size={17} />
+          </span>
+          <span style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600 }}>
+              Take the axe to her photo
+            </span>
+            <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>
+              {draft.axed
+                ? 'Her face turns up smashed on the deck, axe left in it.'
+                : 'Smashes her face wherever the deck shows it.'}
+            </span>
+          </span>
+          {/* the switch is drawn rather than an <input>: the whole row is the
+              target, and a checkbox inside a button is a button inside a button */}
+          <span
+            style={{
+              position: 'relative',
+              width: 46,
+              height: 27,
+              flexShrink: 0,
+              borderRadius: 999,
+              background: draft.axed ? 'var(--bad)' : 'var(--dot)',
+              transition: 'background 160ms',
+            }}
+          >
+            <span
+              style={{
+                position: 'absolute',
+                top: 3,
+                left: draft.axed ? 22 : 3,
+                width: 21,
+                height: 21,
+                borderRadius: '50%',
+                background: '#FFFFFF',
+                boxShadow: '0 1px 3px var(--shadow-lift)',
+                transition: 'left 160ms cubic-bezier(0.22, 1, 0.36, 1)',
+              }}
+            />
+          </span>
+        </button>
+        {axeMissing && (
+          <div style={{ fontSize: 12, color: 'var(--warn-text)', marginTop: 7 }}>
+            The rest of her saved, but the axe didn&apos;t — run{' '}
+            <code style={{ fontFamily: 'var(--mono), monospace', fontSize: 11.5 }}>
+              supabase/axe.sql
+            </code>{' '}
+            once in the SQL editor and it&apos;ll stick.
+          </div>
+        )}
 
         {/* where she's from — the map's whole input */}
         <Label>From</Label>
