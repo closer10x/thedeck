@@ -6,9 +6,10 @@ import { useId } from 'react';
 // buried in it afterwards, and shrinks to the chip on her row.
 //
 // It comes two ways up. On its own it stands the way an axe stands when nobody
-// is swinging it: head up, handle down. `buried` turns it over — head down,
-// edge first, handle in the air — which is the only place an axe points at the
-// ground, and the pose Smash parks in the middle of a smashed photo.
+// is swinging it: head up and to the left, edge out, handle down the other
+// way. `buried` turns it over — head down, edge first, handle in the air —
+// which is the only place an axe points at the ground, and the pose Smash
+// parks in the middle of a smashed photo.
 export default function Axe({ size = 24, buried = false, style }) {
   // useId hands back colons, which are legal in an id and a menace inside
   // url(#…). Strip them, and keep the gradients per-instance so two axes on
@@ -38,7 +39,7 @@ export default function Axe({ size = 24, buried = false, style }) {
           y1="0"
           x2="0.9"
           y2="1"
-          gradientTransform={`rotate(${buried ? -28 : -208} 0.5 0.5)`}
+          gradientTransform={`rotate(${buried ? -28 : -131} 0.5 0.5)`}
         >
           <stop offset="0" stopColor="#EFF2F7" />
           <stop offset="0.45" stopColor="#C3C9D6" />
@@ -53,11 +54,14 @@ export default function Axe({ size = 24, buried = false, style }) {
 
       {/* The lean is baked in rather than left to whoever draws it: upright,
           the axe is a tall thin thing in the corner of a square box, and it has
-          to fill the box on its own at the 13px the row chip draws it at. The
-          buried pose is that same lean turned through half a circle, so both
-          ways up are one number apart and Smash can measure its bite point off
-          a drawing that never moves. */}
-      <g transform={`rotate(${buried ? 28 : 208} 50 50)`}>
+          to fill the box on its own at the 13px the row chip draws it at.
+          Buried is that lean alone. On its own it's the same lean turned
+          through half a circle and then mirrored, which is the only way to get
+          the head to the left with the edge still leading — rotating it there
+          instead would leave the blade facing back down its own handle. The
+          buried pose is untouched by any of that, so Smash still measures its
+          bite point off a drawing that never moves. */}
+      <g transform={buried ? 'rotate(28 50 50)' : 'translate(100 0) scale(-1 1) rotate(208 50 50)'}>
       {/* the haft, drawn first so the head covers it where the eye is */}
       <path
         d="M58 2 L67.5 3 L71 84 L61.5 85 Z"
