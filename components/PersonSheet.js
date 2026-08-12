@@ -1077,8 +1077,11 @@ export default function PersonSheet({
             width: '100%',
             padding: '9px 12px',
             borderRadius: 12,
-            border: `1px solid ${draft.axed ? 'var(--bad-line)' : C.line}`,
-            background: draft.axed ? 'var(--bad-panel)' : 'var(--field)',
+            border: `1px solid ${C.line}`,
+            // the same field every other row sits in, on or off: the switch is
+            // already saying which it is, and a panel that changes colour
+            // underneath it says it twice and louder
+            background: 'var(--field)',
           }}
         >
           {/* dimmed until it's on, so the row reads as "off" at a glance
