@@ -1062,49 +1062,28 @@ export default function PersonSheet({
           })}
         </div>
 
-        {/* the axe */}
+        {/* The axe. No sentence explaining itself: an axe and a switch, and
+            what it does is obvious the first time you flip it and watch. */}
         <Label>Axe</Label>
         <button
           role="switch"
           aria-checked={!!draft.axed}
+          aria-label="Axe her photo"
           onClick={toggleAxe}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 11,
+            justifyContent: 'space-between',
             width: '100%',
-            textAlign: 'left',
-            padding: '11px 12px',
+            padding: '9px 12px',
             borderRadius: 12,
             border: `1px solid ${draft.axed ? 'var(--bad-line)' : C.line}`,
             background: draft.axed ? 'var(--bad-panel)' : 'var(--field)',
           }}
         >
-          <span
-            style={{
-              display: 'inline-flex',
-              width: 30,
-              height: 30,
-              flexShrink: 0,
-              alignItems: 'center',
-              justifyContent: 'center',
-              borderRadius: 9,
-              background: draft.axed ? 'var(--bad-tint)' : 'var(--surface)',
-              border: `1px solid ${draft.axed ? 'var(--bad-line)' : C.line}`,
-            }}
-          >
-            <Axe size={17} />
-          </span>
-          <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: 'block', fontSize: 14.5, fontWeight: 600 }}>
-              Take the axe to her photo
-            </span>
-            <span style={{ display: 'block', fontSize: 12, color: C.muted, marginTop: 2 }}>
-              {draft.axed
-                ? 'Her face turns up smashed on the deck, axe left in it.'
-                : 'Smashes her face wherever the deck shows it.'}
-            </span>
-          </span>
+          {/* dimmed until it's on, so the row reads as "off" at a glance
+              without a word saying so */}
+          <Axe size={30} style={{ opacity: draft.axed ? 1 : 0.42, transition: 'opacity 160ms' }} />
           {/* the switch is drawn rather than an <input>: the whole row is the
               target, and a checkbox inside a button is a button inside a button */}
           <span
