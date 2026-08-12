@@ -16,7 +16,6 @@ import {
   MapPin,
 } from 'lucide-react';
 import Avatar from './Avatar';
-import Axe from './Axe';
 import Smash from './Smash';
 import ActivityLog from './ActivityLog';
 import { STATUSES } from './EventSheet';
@@ -1086,7 +1085,20 @@ export default function PersonSheet({
         >
           {/* dimmed until it's on, so the row reads as "off" at a glance
               without a word saying so */}
-          <Axe size={30} style={{ opacity: draft.axed ? 1 : 0.42, transition: 'opacity 160ms' }} />
+          {/* the same 🪓 that marks her row, at the size the sheet's other
+              rows set their text — dimmed until it's on, so the row reads as
+              a state at a glance without a word saying so */}
+          <span
+            style={{
+              fontSize: 22,
+              lineHeight: 1.2,
+              opacity: draft.axed ? 1 : 0.4,
+              filter: draft.axed ? 'none' : 'grayscale(1)',
+              transition: 'opacity 160ms, filter 160ms',
+            }}
+          >
+            {'\uD83E\uDE93'}
+          </span>
           {/* the switch is drawn rather than an <input>: the whole row is the
               target, and a checkbox inside a button is a button inside a button */}
           <span

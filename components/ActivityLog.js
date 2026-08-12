@@ -17,7 +17,6 @@ import {
   UserPlus,
   X,
 } from 'lucide-react';
-import Axe from './Axe';
 import { ago, initials } from '../lib/format';
 
 const C = {
@@ -29,16 +28,22 @@ const C = {
   bad: 'var(--bad)',
 };
 
+// The axe reads as itself at this size where a line drawing of one wouldn't,
+// and it's the same mark the row and the sheet use.
+function AxeGlyph({ size }) {
+  return <span style={{ fontSize: size, lineHeight: 1 }}>{'\uD83E\uDE93'}</span>;
+}
+
 // Each kind of entry gets a glyph and a colour, so the feed can be skimmed for
 // "what happened" before any of it is actually read.
 const LOOK = {
   'person.add': { Icon: UserPlus, color: 'var(--good)', bg: 'var(--good-tint)' },
   'person.update': { Icon: Pencil, color: 'var(--accent)', bg: 'var(--accent-tint)' },
   'person.remove': { Icon: Trash2, color: C.bad, bg: 'var(--bad-tint)' },
-  // the axe keeps its own steel rather than taking the row's colour — it's the
-  // one glyph in here that's a drawing instead of a line icon
-  'person.axe': { Icon: Axe, color: C.bad, bg: 'var(--bad-tint)' },
-  'person.unaxe': { Icon: Axe, color: 'var(--muted)', bg: 'var(--tint)' },
+  // the one entry whose glyph is the emoji rather than a line icon, because
+  // that emoji is what the axe looks like everywhere else in the app
+  'person.axe': { Icon: AxeGlyph, color: C.bad, bg: 'var(--bad-tint)' },
+  'person.unaxe': { Icon: AxeGlyph, color: 'var(--muted)', bg: 'var(--tint)' },
   'person.archive': { Icon: Archive, color: 'var(--warn)', bg: 'var(--warn-tint)' },
   'person.unarchive': { Icon: ArchiveRestore, color: 'var(--good)', bg: 'var(--good-tint)' },
   'ask.add': { Icon: Send, color: 'var(--accent)', bg: 'var(--accent-tint)' },

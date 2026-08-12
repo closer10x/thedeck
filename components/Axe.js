@@ -2,15 +2,12 @@
 
 import { useId } from 'react';
 
-// One axe, drawn rather than imported — the same steel swings at a face, sits
-// buried in it afterwards, and shrinks to the chip on her row.
-//
-// It comes two ways up. On its own it stands the way an axe stands when nobody
-// is swinging it: head up and to the left, edge out, handle down the other
-// way. `buried` turns it over — head down, edge first, handle in the air —
-// which is the only place an axe points at the ground, and the pose Smash
-// parks in the middle of a smashed photo.
-export default function Axe({ size = 24, buried = false, style }) {
+// The axe that goes into her face: drawn rather than imported, because it has
+// to be posed to the pixel — head down, edge first, handle in the air — and
+// land its cutting edge exactly where the cracks start. Everywhere the axe is
+// just a mark on a row rather than a thing embedded in a picture, the app uses
+// the 🪓 emoji instead, the same way the rat chat uses 🐀.
+export default function Axe({ size = 24, style }) {
   // useId hands back colons, which are legal in an id and a menace inside
   // url(#…). Strip them, and keep the gradients per-instance so two axes on
   // screen don't share one definition.
@@ -29,17 +26,17 @@ export default function Axe({ size = 24, buried = false, style }) {
     >
       <defs>
         {/* Lit from the top left, like everything else on these surfaces —
-            and turned back by however far the drawing itself is turned, so
-            the sheen stays at the top of the steel in both poses. The wood
-            below is not counter-rotated: its gradient runs across the haft to
-            round it off, and that has to turn with the haft. */}
+            and turned back by however far the drawing itself is turned, so the
+            sheen stays at the top of the steel. The wood below is not
+            counter-rotated: its gradient runs across the haft to round it off,
+            and that has to turn with the haft. */}
         <linearGradient
           id={steel}
           x1="0.1"
           y1="0"
           x2="0.9"
           y2="1"
-          gradientTransform={`rotate(${buried ? -28 : -131} 0.5 0.5)`}
+          gradientTransform="rotate(-28 0.5 0.5)"
         >
           <stop offset="0" stopColor="#EFF2F7" />
           <stop offset="0.45" stopColor="#C3C9D6" />
@@ -52,16 +49,11 @@ export default function Axe({ size = 24, buried = false, style }) {
         </linearGradient>
       </defs>
 
-      {/* The lean is baked in rather than left to whoever draws it: upright,
-          the axe is a tall thin thing in the corner of a square box, and it has
-          to fill the box on its own at the 13px the row chip draws it at.
-          Buried is that lean alone. On its own it's the same lean turned
-          through half a circle and then mirrored, which is the only way to get
-          the head to the left with the edge still leading — rotating it there
-          instead would leave the blade facing back down its own handle. The
-          buried pose is untouched by any of that, so Smash still measures its
-          bite point off a drawing that never moves. */}
-      <g transform={buried ? 'rotate(28 50 50)' : 'translate(100 0) scale(-1 1) rotate(208 50 50)'}>
+      {/* The lean is baked in rather than left to the caller: it's the angle
+          the axe comes to rest at once it's in her face, and Smash measures its
+          bite point off a drawing that never moves. The sheen is turned back by
+          the same amount, so the light still lands on top of the steel. */}
+      <g transform="rotate(28 50 50)">
       {/* the haft, drawn first so the head covers it where the eye is */}
       <path
         d="M58 2 L67.5 3 L71 84 L61.5 85 Z"
@@ -74,8 +66,7 @@ export default function Axe({ size = 24, buried = false, style }) {
 
       {/* Head and poll in one silhouette. The flare is what makes it an axe
           rather than a hammer: the bit sweeps out to the left and the butt
-          stays narrow on the right, and that asymmetry is still legible at
-          the 13px the row chip draws it at. */}
+          stays narrow on the right. */}
       <path
         d="M74 72 L64 70 Q44 62 26 60 Q14 78 28 96 Q48 92 64 88 L74 86 Z"
         fill={`url(#${steel})`}

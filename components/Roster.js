@@ -18,7 +18,6 @@ import {
   Check,
 } from 'lucide-react';
 import Avatar from './Avatar';
-import Axe from './Axe';
 import Smash from './Smash';
 import PersonSheet from './PersonSheet';
 import Events from './Events';
@@ -1001,12 +1000,13 @@ function Card({ p, smash, onOpen }) {
               display: 'inline-flex',
               background: 'rgba(255,255,255,0.92)',
               borderRadius: 7,
-              padding: '3px 5px',
-              lineHeight: 0,
+              fontSize: 10,
+              padding: '2px 5px',
+              lineHeight: 1.2,
               boxShadow: '0 1px 3px var(--shadow)',
             }}
           >
-            <Axe size={14} />
+            {'\uD83E\uDE93'}
           </span>
         )}
       </div>
@@ -1086,15 +1086,15 @@ function Row({ p, first, smash, onOpen }) {
             <span
               title="Axed"
               style={{
-                display: 'inline-flex',
+                fontSize: 9.5,
                 background: 'var(--bad-tint)',
                 borderRadius: 5,
-                padding: '3px 5px',
+                padding: '2px 5px',
                 flexShrink: 0,
-                lineHeight: 0,
+                lineHeight: 1.2,
               }}
             >
-              <Axe size={13} />
+              {'\uD83E\uDE93'}
             </span>
           )}
         </div>
