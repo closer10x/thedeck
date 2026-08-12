@@ -251,7 +251,7 @@ export default function Smash({ axed, replay = false, src, size, radius = '50%',
                 transformOrigin: `${AXE.biteX}% ${AXE.biteY}%`,
               }}
             >
-              <Axe size="100%" />
+              <Axe size="100%" buried />
             </span>
           </span>
         </>

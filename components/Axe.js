@@ -3,11 +3,13 @@
 import { useId } from 'react';
 
 // One axe, drawn rather than imported — the same steel swings at a face, sits
-// buried in it afterwards, and shrinks to the chip on her row, so the light
-// falls the same way in all three places. Head at the bottom with the bit
-// facing left, handle running straight up: everything that uses it rotates it,
-// and a drawing that already leans has to be un-leaned first.
-export default function Axe({ size = 24, style }) {
+// buried in it afterwards, and shrinks to the chip on her row.
+//
+// It comes two ways up. On its own it stands the way an axe stands when nobody
+// is swinging it: head up, handle down. `buried` turns it over — head down,
+// edge first, handle in the air — which is the only place an axe points at the
+// ground, and the pose Smash parks in the middle of a smashed photo.
+export default function Axe({ size = 24, buried = false, style }) {
   // useId hands back colons, which are legal in an id and a menace inside
   // url(#…). Strip them, and keep the gradients per-instance so two axes on
   // screen don't share one definition.
@@ -25,8 +27,19 @@ export default function Axe({ size = 24, style }) {
       style={style}
     >
       <defs>
-        {/* lit from the top left, like everything else on these surfaces */}
-        <linearGradient id={steel} x1="0.1" y1="0" x2="0.9" y2="1">
+        {/* Lit from the top left, like everything else on these surfaces —
+            and turned back by however far the drawing itself is turned, so
+            the sheen stays at the top of the steel in both poses. The wood
+            below is not counter-rotated: its gradient runs across the haft to
+            round it off, and that has to turn with the haft. */}
+        <linearGradient
+          id={steel}
+          x1="0.1"
+          y1="0"
+          x2="0.9"
+          y2="1"
+          gradientTransform={`rotate(${buried ? -28 : -208} 0.5 0.5)`}
+        >
           <stop offset="0" stopColor="#EFF2F7" />
           <stop offset="0.45" stopColor="#C3C9D6" />
           <stop offset="1" stopColor="#7C8394" />
@@ -38,13 +51,13 @@ export default function Axe({ size = 24, style }) {
         </linearGradient>
       </defs>
 
-      {/* The whole thing leans, baked in rather than left to whoever draws it.
-          Upright, the axe is a tall thin thing in the corner of a square box —
-          which is fine mid-swing, where it's being rotated anyway, and wrong
-          in the 13px chip on her row, where it has to fill the box on its own.
-          Everything downstream measures from this leaning drawing, so the lean
-          is here once instead of at every call. */}
-      <g transform="rotate(28 50 50)">
+      {/* The lean is baked in rather than left to whoever draws it: upright,
+          the axe is a tall thin thing in the corner of a square box, and it has
+          to fill the box on its own at the 13px the row chip draws it at. The
+          buried pose is that same lean turned through half a circle, so both
+          ways up are one number apart and Smash can measure its bite point off
+          a drawing that never moves. */}
+      <g transform={`rotate(${buried ? 28 : 208} 50 50)`}>
       {/* the haft, drawn first so the head covers it where the eye is */}
       <path
         d="M58 2 L67.5 3 L71 84 L61.5 85 Z"
