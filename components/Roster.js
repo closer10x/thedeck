@@ -26,10 +26,18 @@ import MapView from './MapView';
 import ActivityLog from './ActivityLog';
 import Stats from './Stats';
 import Mark from './Mark';
+import XWing from './XWing';
 import { daysSince, temp, rate, initials, OUTCOME_EMOJI } from '../lib/format';
 
 // Just asked leads because it's the default — a selected chip sitting second
 // makes the first one look like the one you're on.
+// An event she said yes to is an ask that landed — it just landed in a calendar
+// rather than in a text message. A "maybe" is the same not-yet as a pending ask,
+// and a no-show is a ghost by another name. These feed the numbers only: her
+// sheet still lists the asks you actually logged, so nothing here can be
+// mistaken for history you can edit.
+const EVENT_OUTCOME = { coming: 'yes', came: 'yes', maybe: 'pending', noshow: 'ghost' };
+
 const SORTS = [
   { id: 'recent', label: 'Just asked' },
   { id: 'cold', label: 'Coldest' },
@@ -93,6 +101,21 @@ export default function Roster(props) {
     return () => clearTimeout(t);
   }, [smashId, openId]);
 
+  // The header is sticky, so its height is rent it charges for the whole
+  // scroll, not just the top of the page. At rest it can afford to look like a
+  // title; once you're down in the list it has no business being one, so it
+  // condenses — same controls, smaller. Nothing leaves, which is the point:
+  // who's signed in, what's owed and which tab you're on stay readable from
+  // anywhere. Set from a listener rather than during render, so the
+  // prerendered markup and the first paint agree.
+  const [condensed, setCondensed] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setCondensed(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   // Grid is faces, list is facts — which one you want depends on whether you're
   // browsing or working the queue, so it's a toggle rather than a decision.
   // Read from storage after mount, never during: this page is prerendered, and
@@ -146,9 +169,72 @@ export default function Roster(props) {
     router.refresh();
   }
 
+  // Every ask that counts: the ones you logged, plus a standing in an event.
+  // Being on the list for Saturday is her having said yes to something, and a
+  // deck that calls her "never asked" while she's coming to the beach is
+  // describing your texts rather than your life.
+  //
+  // Then one ask per person per day, whatever it came from. Logging "beach
+  // day" and building the event for it is one invitation recorded twice, and
+  // two different places on the same afternoon is still one yes for that day —
+  // counting either twice inflates a hit rate for work you did once.
+  const asks = useMemo(() => {
+    const byEvent = {};
+    for (const e of events) byEvent[e.id] = e;
+
+    const candidates = [...invites.map((i) => ({ ...i, logged: true }))];
+    for (const g of guests) {
+      const event = byEvent[g.event_id];
+      const outcome = EVENT_OUTCOME[g.status];
+      // a status nobody recognises isn't an ask, and neither is a guest row
+      // pointing at an event that's since been deleted
+      if (!event || !outcome) continue;
+      candidates.push({
+        id: `event:${g.id}`,
+        person_id: g.person_id,
+        // Dated from when you put her on the list, not from when the party is.
+        // The night itself is usually still ahead, and dating the ask to it
+        // made every guest read "last asked Aug 22" about a Saturday that
+        // hasn't happened — a future date in the past tense, and every one of
+        // them tied at zero days on a list sorted by recency.
+        invited_at: g.created_at || event.at || event.created_at,
+        what: event.name,
+        outcome,
+        from_event: true,
+        logged: false,
+      });
+    }
+
+    // How much a day is worth when it holds more than one. A yes outranks
+    // everything — that's the whole point of the rule. After that an answer of
+    // any kind beats still waiting on her, because a pending ask isn't a
+    // result yet and shouldn't be what the day is remembered as.
+    const RANK = { yes: 3, no: 2, ghost: 1, pending: 0 };
+
+    const best = new Map();
+    for (const a of candidates) {
+      const d = new Date(a.invited_at);
+      const key = `${a.person_id}|${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      const held = best.get(key);
+      if (!held) {
+        best.set(key, a);
+        continue;
+      }
+      const better = RANK[a.outcome] - RANK[held.outcome];
+      // Same standing on the day: keep the one you typed. It carries your
+      // wording, it's the row her sheet shows, and it's the one you can edit.
+      if (better > 0 || (better === 0 && a.logged && !held.logged)) best.set(key, a);
+    }
+    return [...best.values()];
+  }, [invites, events, guests]);
+
   const rows = useMemo(() => {
+    // two streams: what the numbers count, and what her sheet is allowed to
+    // show. Only the first one has events folded into it.
     const byPerson = {};
-    for (const inv of invites) (byPerson[inv.person_id] ||= []).push(inv);
+    for (const a of asks) (byPerson[a.person_id] ||= []).push(a);
+    const loggedByPerson = {};
+    for (const inv of invites) (loggedByPerson[inv.person_id] ||= []).push(inv);
 
     let list = people
       .filter((p) => !p.archived)
@@ -159,7 +245,13 @@ export default function Roster(props) {
         const last = mine[0]?.invited_at || null;
         return {
           ...p,
-          invites: mine,
+          invites: (loggedByPerson[p.id] || []).sort(
+            (a, b) => new Date(b.invited_at) - new Date(a.invited_at)
+          ),
+          // the run of marks under her name reads off the same stream the
+          // numbers do, so a yes to Saturday shows as a tick rather than as
+          // nothing at all next to "100% yes"
+          form: mine,
           count: mine.length,
           last,
           days: daysSince(last),
@@ -182,8 +274,15 @@ export default function Roster(props) {
       rate: (a, b) => (b.rate ?? -1) - (a.rate ?? -1),
       az: (a, b) => a.name.localeCompare(b.name),
     };
-    return list.sort(sorters[sort]);
-  }, [people, invites, q, sort]);
+    // A wingman sits under everyone, whatever the list is sorted by — coldest,
+    // best rate, A–Z, all of it. He isn't competing in any of those, and
+    // letting him win "coldest" because nobody's asked him out puts a man at
+    // the top of a list of women you're meant to be calling.
+    return list.sort((a, b) => {
+      if (!!a.wingman !== !!b.wingman) return a.wingman ? 1 : -1;
+      return sorters[sort](a, b);
+    });
+  }, [people, asks, invites, q, sort]);
 
   // Everyone, with her asks attached and nothing filtered out. `rows` is
   // narrowed by the deck's search box and drops archived people — fine for the
@@ -201,7 +300,18 @@ export default function Roster(props) {
   }, [people, invites]);
 
   const placedCount = everyone.filter((p) => !p.archived && p.lat != null && p.lng != null).length;
-  const owed = rows.filter((r) => r.days === null || r.days > 21).length;
+
+  // A wingman keeps his card, his face and his place in the list — he's just
+  // not someone you're asking out, so counting him would put a man in the hit
+  // rate and a permanent debt in "owed". Everything numeric reads off these
+  // two instead of off `rows` and `invites`.
+  const counted = useMemo(() => rows.filter((r) => !r.wingman), [rows]);
+  const countedInvites = useMemo(() => {
+    const wingmen = new Set(people.filter((p) => p.wingman).map((p) => p.id));
+    return asks.filter((a) => !wingmen.has(a.person_id));
+  }, [people, asks]);
+
+  const owed = counted.filter((r) => r.days === null || r.days > 21).length;
   // re-read her off the fresh rows every render so the invite list stays live
   const openPerson = openId && openId !== 'new' ? rows.find((r) => r.id === openId) : null;
   const openEvent =
@@ -234,21 +344,23 @@ export default function Roster(props) {
           top: 0,
           zIndex: 5,
           borderBottom: '1px solid var(--glass-fill)',
-          padding: '18px 16px 12px',
+          padding: condensed ? '8px 16px 8px' : '13px 16px 10px',
+          transition: 'padding 160ms ease',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
             <span style={{ display: 'flex', color: C.accent, flexShrink: 0 }}>
-              <Mark size={25} strokeWidth={1.5} />
+              <Mark size={condensed ? 20 : 23} strokeWidth={1.5} />
             </span>
             <h1
               style={{
                 margin: 0,
                 fontFamily: 'var(--display), sans-serif',
-                fontSize: 25,
+                fontSize: condensed ? 18 : 22,
                 letterSpacing: '-0.035em',
                 fontWeight: 700,
+                transition: 'font-size 160ms ease',
               }}
             >
               The Deck
@@ -290,7 +402,7 @@ export default function Roster(props) {
                 color: showStats ? C.accent : owed ? 'var(--bad)' : C.muted,
               }}
             >
-              {rows.length} on deck · {owed} owed
+              {counted.length} on deck · {owed} owed
               <ChevronDown
                 size={13}
                 style={{
@@ -311,8 +423,8 @@ export default function Roster(props) {
                   aria-label={`Signed in as ${me.name}`}
                   aria-expanded={menuOpen}
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: condensed ? 27 : 30,
+                    height: condensed ? 27 : 30,
                     borderRadius: '50%',
                     border: `1px solid ${menuOpen ? C.accent : C.line}`,
                     background: menuOpen ? C.accent : 'var(--accent-tint)',
@@ -447,10 +559,11 @@ export default function Roster(props) {
           style={{
             display: 'flex',
             gap: 3,
-            marginTop: 12,
-            padding: 3,
+            marginTop: condensed ? 7 : 10,
+            padding: 2.5,
             borderRadius: 999,
             background: 'var(--segment)',
+            transition: 'margin-top 160ms ease',
           }}
         >
           {[
@@ -466,7 +579,7 @@ export default function Roster(props) {
                 aria-pressed={on}
                 style={{
                   flex: 1,
-                  padding: '8px 0',
+                  padding: condensed ? '5px 0' : '7px 0',
                   borderRadius: 999,
                   border: 'none',
                   background: on ? C.surface : 'transparent',
@@ -474,7 +587,9 @@ export default function Roster(props) {
                   fontSize: 13.5,
                   fontWeight: on ? 650 : 500,
                   boxShadow: on ? '0 1px 3px var(--shadow-lift)' : 'none',
-                  transition: 'background 160ms ease, color 160ms ease',
+                  // one declaration: a second `transition` key would silently
+                  // replace this one and the condense would snap rather than run
+                  transition: 'padding 160ms ease, background 160ms ease, color 160ms ease',
                 }}
               >
                 {t.label}
@@ -554,10 +669,11 @@ export default function Roster(props) {
         <div
           style={{
             position: 'relative',
-            marginTop: 10,
+            marginTop: condensed ? 7 : 9,
             display: 'flex',
             alignItems: 'center',
             gap: 8,
+            transition: 'margin-top 160ms ease',
           }}
         >
           <button
@@ -731,7 +847,7 @@ export default function Roster(props) {
           />
         )}
 
-        {tab === 'deck' && showStats && !loading && !error && <Stats rows={rows} invites={invites} />}
+        {tab === 'deck' && showStats && !loading && !error && <Stats rows={counted} invites={countedInvites} />}
         {tab === 'deck' && loading && <Empty text="Loading the deck…" />}
         {tab === 'deck' && error && <Empty text={`Couldn't load: ${error}`} />}
         {tab === 'deck' && !loading && !error && rows.length === 0 && (
@@ -969,23 +1085,40 @@ function Card({ p, smash, onOpen }) {
           {p.days === null ? 'new' : `${p.days}d`}
         </span>
 
-        {p.rat_chat && (
-          <span
-            title="In the rat chat"
-            style={{
-              position: 'absolute',
-              top: 6,
-              left: 6,
-              fontSize: 10,
-              background: 'rgba(255,255,255,0.92)',
-              borderRadius: 7,
-              padding: '2px 5px',
-              lineHeight: 1.2,
-              boxShadow: '0 1px 3px var(--shadow)',
-            }}
-          >
-            {'🐀'}
-          </span>
+        {(p.rat_chat || p.wingman) && (
+          <div style={{ position: 'absolute', top: 6, left: 6, display: 'flex', gap: 4 }}>
+            {p.rat_chat && (
+              <span
+                title="In the rat chat"
+                style={{
+                  fontSize: 10,
+                  background: 'rgba(255,255,255,0.92)',
+                  borderRadius: 7,
+                  padding: '2px 5px',
+                  lineHeight: 1.2,
+                  boxShadow: '0 1px 3px var(--shadow)',
+                }}
+              >
+                {'🐀'}
+              </span>
+            )}
+            {p.wingman && (
+              <span
+                title="Wingman — kept out of the numbers"
+                style={{
+                  display: 'flex',
+                  color: C.accent,
+                  background: 'rgba(255,255,255,0.92)',
+                  borderRadius: 7,
+                  padding: '2px 4px',
+                  lineHeight: 1,
+                  boxShadow: '0 1px 3px var(--shadow)',
+                }}
+              >
+                <XWing size={12} />
+              </span>
+            )}
+          </div>
         )}
 
         {/* the smashed photo says it loudly; this says it in the same place
@@ -1097,13 +1230,29 @@ function Row({ p, first, smash, onOpen }) {
               {'\uD83E\uDE93'}
             </span>
           )}
+          {p.wingman && (
+            <span
+              title="Wingman — kept out of the numbers"
+              style={{
+                display: 'flex',
+                color: C.accent,
+                background: 'var(--accent-tint)',
+                borderRadius: 5,
+                padding: '2px 4px',
+                flexShrink: 0,
+                lineHeight: 1,
+              }}
+            >
+              <XWing size={12} />
+            </span>
+          )}
         </div>
 
         {/* the note stays in her sheet — the row is for the ask history */}
 
         {/* form strip and the tally get a line each — together they wrapped */}
         <div style={{ marginTop: 6 }}>
-          <FormLine invites={p.invites} />
+          <FormLine asks={p.form} />
         </div>
         {/* the row's only actual data — 11px mono against a 62px face was
             asking to be squinted at */}
@@ -1162,9 +1311,10 @@ function Row({ p, first, smash, onOpen }) {
   );
 }
 
-// last five asks, newest on the right
-function FormLine({ invites }) {
-  const last = invites.slice(0, 5).reverse();
+// last five asks, newest on the right — events included, because being on the
+// list for Saturday is a yes and the line is meant to show how they've landed
+function FormLine({ asks }) {
+  const last = asks.slice(0, 5).reverse();
   if (!last.length) return null;
   return (
     <span style={{ fontSize: 10.5, letterSpacing: 1.5, lineHeight: 1 }}>

@@ -121,10 +121,15 @@ function Section({ title, children }) {
 
 function Card({ event, past, onOpen }) {
   const soon = countdown(event.at);
+  // A wingman on the guest list is there — he keeps his face in the row below.
+  // He just isn't one of the people the night is being counted by, and putting
+  // him in the tally is the same leak as counting him on the deck. Everyone
+  // else at that event still counts, wingman standing next to her or not.
+  const counted = event.guests.filter((g) => !g.person?.wingman);
   // the tally reads "3 coming · 1 maybe" — only the statuses actually in use
   const tally = STATUSES.map((s) => ({
     ...s,
-    n: event.guests.filter((g) => g.status === s.id).length,
+    n: counted.filter((g) => g.status === s.id).length,
   })).filter((s) => s.n > 0);
 
   return (

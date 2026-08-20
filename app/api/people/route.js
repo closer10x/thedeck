@@ -11,7 +11,7 @@ const NO_STORE = { 'cache-control': 'no-store, max-age=0' };
 // is logged by /api/upload where it happens, and the weekly Instagram re-pull
 // writes photos on its own, so diffing them here would fill the log with
 // "updated photos" nobody did.
-const LOGGED = ['name', 'ig_handle', 'phone', 'note', 'rat_chat', 'city'];
+const LOGGED = ['name', 'ig_handle', 'phone', 'note', 'rat_chat', 'wingman', 'city'];
 
 // Coordinates are Google's answer for whatever city was typed, not something
 // anyone enters by hand — so they're stored, but never diffed for the log.
@@ -49,27 +49,50 @@ function sanitize(body) {
     })(),
     rat_chat: !!body.rat_chat,
     axed: !!body.axed,
+    // a wingman is on the roster but not in the numbers — see Roster.js
+    wingman: !!body.wingman,
     archived: !!body.archived,
   };
 }
 
-// `axed` arrived after some databases did (see supabase/axe.sql). A column
-// that isn't there yet fails the whole write, which would mean one unrun
-// migration silently breaking every save in the app — so the write is retried
-// without it and the client is told, rather than her name and note being lost
-// on the way to a smashed photo.
-function axeColumnMissing(error) {
+// Columns that arrived after the table did, each with the file that adds it.
+// A database that hasn't had one run against it yet rejects the whole write for
+// a column it's never heard of — so one unrun migration silently breaks every
+// save in the app, and it surfaces as her name, her note and her photo refusing
+// to stick for reasons nobody can see. A write that trips on one of these drops
+// it and goes again, so the app works either side of the migration.
+const LATE_COLUMNS = [
+  { field: 'axed', file: 'supabase/axe.sql' },
+  { field: 'wingman', file: 'supabase/wingman.sql' },
+];
+
+// PGRST204 is PostgREST's "no such column in the schema cache"; 42703 is
+// Postgres saying the same thing. It still has to name one of ours — a
+// different missing column is a real fault and belongs in the response.
+function lateColumn(error) {
   const said = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
-  return /axed/.test(said) && /(column|schema cache)/i.test(said);
+  if (!/(column|schema cache)/i.test(said)) return null;
+  return LATE_COLUMNS.find((c) => new RegExp(`\\b${c.field}\\b`, 'i').test(said)) || null;
 }
 
-// Runs the write, and runs it again without the axe if that's what stopped it.
-async function write(run, row) {
-  const res = await run(row);
-  if (!res.error || !axeColumnMissing(res.error)) return { res, axeMissing: false };
-  const rest = { ...row };
-  delete rest.axed;
-  return { res: await run(rest), axeMissing: true };
+// Runs the write, shedding late columns one at a time for as long as the
+// database keeps refusing them, and hands back the row as it actually landed
+// plus which fields never made it — the log has to describe what was written,
+// not what we hoped to send.
+async function writeRow(run, row) {
+  let attempt = row;
+  const dropped = new Set();
+  // at most one pass per late column, then whatever comes back is the answer
+  for (let i = 0; i <= LATE_COLUMNS.length; i++) {
+    const res = await run(attempt);
+    const late = res.error ? lateColumn(res.error) : null;
+    if (!late || dropped.has(late.field)) return { res, row: attempt, dropped };
+    dropped.add(late.field);
+    console.warn(`[people] no ${late.field} column — run ${late.file} to keep it`);
+    const { [late.field]: _drop, ...rest } = attempt;
+    attempt = rest;
+  }
+  return { res: await run(attempt), row: attempt, dropped };
 }
 
 // insert when there's no id, update when there is. Returns the id either way so
@@ -83,7 +106,7 @@ export async function POST(req) {
   }
 
   if (!body.id) {
-    const { res, axeMissing } = await write(
+    const { res, dropped } = await writeRow(
       (r) => supabaseAdmin.from('people').insert(r).select('id').single(),
       { ...row, created_by: await actorName(req) }
     );
@@ -98,7 +121,7 @@ export async function POST(req) {
       detail: `Added ${row.name}`,
     });
     return NextResponse.json(
-      { id: res.data.id, ...(axeMissing && { axe: 'missing' }) },
+      { id: res.data.id, ...(dropped.has('axed') && { axe: 'missing' }) },
       { headers: NO_STORE }
     );
   }
@@ -112,7 +135,7 @@ export async function POST(req) {
     .eq('id', body.id)
     .maybeSingle();
 
-  const { res, axeMissing } = await write(
+  const { res, row: written, dropped } = await writeRow(
     (r) => supabaseAdmin.from('people').update(r).eq('id', body.id).select('id').single(),
     row
   );
@@ -122,40 +145,42 @@ export async function POST(req) {
 
   if (before) {
     // archiving is its own thing, not one field among several
-    if (!before.archived !== !row.archived) {
+    if (!before.archived !== !written.archived) {
       await logActivity(req, {
-        action: row.archived ? 'person.archive' : 'person.unarchive',
-        subject: row.name,
+        action: written.archived ? 'person.archive' : 'person.unarchive',
+        subject: written.name,
         person_id: body.id,
-        detail: row.archived ? `Archived ${row.name}` : `Brought ${row.name} back`,
+        detail: written.archived ? `Archived ${written.name}` : `Brought ${written.name} back`,
       });
     }
 
     // The axe is a thing done to her, not a field she has — "Jon updated her
     // axe" would be a poor description of taking one to her face.
-    if (!axeMissing && !before.axed !== !row.axed) {
+    if (!dropped.has('axed') && !before.axed !== !written.axed) {
       await logActivity(req, {
-        action: row.axed ? 'person.axe' : 'person.unaxe',
-        subject: row.name,
+        action: written.axed ? 'person.axe' : 'person.unaxe',
+        subject: written.name,
         person_id: body.id,
-        detail: row.axed ? `Took the axe to ${row.name}'s photo` : `Pulled the axe out of ${row.name}'s photo`,
+        detail: written.axed
+          ? `Took the axe to ${written.name}'s photo`
+          : `Pulled the axe out of ${written.name}'s photo`,
       });
     }
 
-    const changed = changedFields(before, row, LOGGED);
+    const changed = changedFields(before, written, LOGGED);
     if (changed.length) {
       // a rename should read as one, and say what it was
       const renamed = changed.includes('name');
       const labels = changed.map((f) => FIELD_LABELS[f] || f);
       await logActivity(req, {
         action: 'person.update',
-        subject: row.name,
+        subject: written.name,
         person_id: body.id,
         detail: renamed
-          ? `Renamed ${before.name} to ${row.name}${
+          ? `Renamed ${before.name} to ${written.name}${
               changed.length > 1 ? `, and changed her ${andList(labels.filter((l) => l !== 'name'))}` : ''
             }`
-          : `Updated ${row.name}'s ${andList(labels)}`,
+          : `Updated ${written.name}'s ${andList(labels)}`,
         meta: { fields: changed },
         // autosave lands several times while you're typing; one entry per sitting
         coalesce: true,
@@ -164,7 +189,7 @@ export async function POST(req) {
   }
 
   return NextResponse.json(
-    { id: res.data.id, ...(axeMissing && { axe: 'missing' }) },
+    { id: res.data.id, ...(dropped.has('axed') && { axe: 'missing' }) },
     { headers: NO_STORE }
   );
 }

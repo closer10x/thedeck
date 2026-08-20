@@ -1,0 +1,11 @@
+-- The wingman flag. Paste into the Supabase SQL editor.
+--
+-- Safe to run more than once and safe against a database with rows in it.
+-- It's also in schema.sql, so a fresh setup doesn't need this.
+--
+-- Some people on the deck aren't people you're asking out — they're who you
+-- bring. They keep their card, their photo and their place in the list, but
+-- nothing about them reaches the counters: not "on deck", not "owed", not the
+-- hit rate, not the weekly bars. Default false, so every row that already
+-- exists stays exactly what it was.
+alter table people add column if not exists wingman boolean default false;

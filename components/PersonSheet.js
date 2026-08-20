@@ -20,6 +20,7 @@ import Smash from './Smash';
 import ActivityLog from './ActivityLog';
 import { STATUSES } from './EventSheet';
 import { parseHandle, formatUSPhone, OUTCOME_EMOJI } from '../lib/format';
+import XWing from './XWing';
 
 const C = { ink: 'var(--ink)', muted: 'var(--muted)', line: 'var(--line)', accent: 'var(--accent)' };
 
@@ -95,6 +96,7 @@ export default function PersonSheet({
       lng: null,
       rat_chat: false,
       axed: false,
+      wingman: false,
     }
   );
   const [paste, setPaste] = useState(person?.ig_handle ? `@${person.ig_handle}` : '');
@@ -765,6 +767,15 @@ export default function PersonSheet({
               padding: 0,
             }}
           />
+          {/* the mark rides beside his name wherever the name goes */}
+          {draft.wingman && (
+            <span
+              title="Wingman — kept out of the numbers"
+              style={{ display: 'flex', color: C.accent, flexShrink: 0 }}
+            >
+              <XWing size={17} />
+            </span>
+          )}
           <button
             onClick={requestClose}
             aria-label="Close"
@@ -1137,6 +1148,51 @@ export default function PersonSheet({
           </div>
         )}
 
+        {/* Wingman. He's on the roster because you need him there, not because
+            you're asking him out — so he keeps his card and his face, and the
+            stats pretend he isn't there. */}
+        <Label>Wingman</Label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span
+            style={{ fontSize: 14.5, flex: 1, display: 'flex', alignItems: 'center', gap: 7 }}
+          >
+            <span style={{ display: 'flex', color: C.accent }}>
+              <XWing size={16} />
+            </span>
+            Flying wingman?
+          </span>
+          {[
+            { v: true, label: 'Yes', color: 'var(--good)', bg: 'var(--good-tint)' },
+            { v: false, label: 'No', color: 'var(--muted-2)', bg: 'var(--tint)' },
+          ].map((o) => {
+            const on = !!draft.wingman === o.v;
+            return (
+              <button
+                key={o.label}
+                onClick={() => set('wingman', o.v)}
+                style={{
+                  minWidth: 66,
+                  padding: '9px 0',
+                  borderRadius: 11,
+                  border: `1px solid ${on ? o.color : C.line}`,
+                  background: on ? o.bg : 'var(--surface)',
+                  color: on ? o.color : C.muted,
+                  fontWeight: 600,
+                  fontSize: 14,
+                }}
+              >
+                {o.label}
+              </button>
+            );
+          })}
+        </div>
+        {draft.wingman && (
+          <div style={{ fontSize: 11.5, color: C.muted, marginTop: 6 }}>
+            Off the books — no asks of his count toward the deck, the hit rate or
+            anything owed.
+          </div>
+        )}
+
         {/* where she's from — the map's whole input */}
         <Label>From</Label>
         <div style={{ position: 'relative' }}>
@@ -1368,7 +1424,15 @@ export default function PersonSheet({
             <div style={{ marginTop: 10 }}>
               {invites.length === 0 && (
                 <div style={{ fontSize: 13, color: C.muted, padding: '8px 0' }}>
-                  Never asked. That's the whole point of the list.
+                  {/* An event she's on counts as an ask in the numbers, so
+                      "never asked" here would contradict the card that just
+                      said otherwise. The asks below are the ones you logged;
+                      the events are their own list further up. */}
+                  {herEvents.length
+                    ? `No asks logged — she's on ${
+                        herEvents.length === 1 ? 'an event' : `${herEvents.length} events`
+                      }, which the numbers count.`
+                    : "Never asked. That's the whole point of the list."}
                 </div>
               )}
               {invites.map((inv) => {

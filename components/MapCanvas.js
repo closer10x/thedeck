@@ -77,6 +77,31 @@ function isDark() {
 // sits on that tip, not on her chin.
 const PIN_W = 108;
 const PIN_H = 134;
+
+// Everyone from Tampa gets Google's one answer for "Tampa", so their pins land
+// on the exact same point and all but the last drawn disappears underneath it.
+// A shared spot is fanned into a ring instead: two people sit left and right of
+// where they're from, three make a triangle, and nobody is buried. The ring is
+// sized so neighbouring pins just clear each other — half a pin's width plus a
+// little air — which means it grows with the crowd rather than packing them
+// tighter the more of them there are.
+function ringOffsets(n) {
+  if (n < 2) return [{ dx: 0, dy: 0 }];
+  const spacing = PIN_W / 2 + 4; // pins are drawn at half size on the map
+  const radius = spacing / (2 * Math.sin(Math.PI / n));
+  // start at due west so a pair reads as side by side rather than stacked
+  return Array.from({ length: n }, (_, i) => {
+    const angle = Math.PI + (2 * Math.PI * i) / n;
+    return { dx: radius * Math.cos(angle), dy: radius * Math.sin(angle) };
+  });
+}
+
+// Two people are "in the same place" when Google handed back the same answer.
+// Rounding to five decimals is about a metre — far tighter than any two cities
+// and loose enough that float noise doesn't split a pair apart.
+function spotKey(p) {
+  return `${Number(p.lat).toFixed(5)},${Number(p.lng).toFixed(5)}`;
+}
 const HEAD_R = 54; // centre of the circular head
 const RING = 7;
 
@@ -161,6 +186,7 @@ export default function MapCanvas({ people, onOpen, height = 380 }) {
   const box = useRef(null);
   const map = useRef(null);
   const markers = useRef([]);
+  const reseatListener = useRef(null);
   const [failed, setFailed] = useState(false);
   const [why, setWhy] = useState('');
 
@@ -228,6 +254,16 @@ export default function MapCanvas({ people, onOpen, height = 380 }) {
         const icons = await Promise.all(people.map((p) => avatarPin(p)));
         if (!alive) return;
 
+        // who shares a spot with whom, and where in that spot's ring each of
+        // them sits
+        const bySpot = {};
+        people.forEach((p) => (bySpot[spotKey(p)] ||= []).push(p.id));
+        const seatOf = {};
+        for (const ids of Object.values(bySpot)) {
+          const seats = ringOffsets(ids.length);
+          ids.forEach((id, i) => (seatOf[id] = seats[i]));
+        }
+
         const bounds = new g.LatLngBounds();
         people.forEach((p, i) => {
           const pos = { lat: Number(p.lat), lng: Number(p.lng) };
@@ -249,9 +285,42 @@ export default function MapCanvas({ people, onOpen, height = 380 }) {
               : {}),
           });
           marker.addListener('click', () => open.current?.(p.id));
+          // where she actually is, and where in the fan she's drawn
+          marker.__base = pos;
+          marker.__seat = seatOf[p.id];
           markers.current.push(marker);
+          // the fit is done on the real places — the fan is a drawing trick and
+          // shouldn't drag the viewport outward
           bounds.extend(pos);
         });
+
+        // The fan is held in screen pixels, not degrees: a fixed offset in
+        // degrees would be a mile apart at state level and invisible at street
+        // level. Recomputing on every zoom keeps the spacing the same on the
+        // glass wherever you are.
+        const reseat = () => {
+          const proj = map.current.getProjection();
+          if (!proj) return;
+          const scale = 2 ** map.current.getZoom();
+          for (const m of markers.current) {
+            const seat = m.__seat;
+            if (!seat || (!seat.dx && !seat.dy)) continue;
+            const world = proj.fromLatLngToPoint(new g.LatLng(m.__base.lat, m.__base.lng));
+            m.setPosition(
+              proj.fromPointToLatLng(
+                new g.Point(world.x + seat.dx / scale, world.y + seat.dy / scale)
+              )
+            );
+          }
+        };
+        // the projection doesn't exist until the map has drawn once, so seat
+        // them on idle as well as on every zoom after that
+        reseatListener.current?.forEach((l) => g.event.removeListener(l));
+        reseatListener.current = [
+          g.event.addListener(map.current, 'zoom_changed', reseat),
+          g.event.addListener(map.current, 'idle', reseat),
+        ];
+        reseat();
 
         if (people.length === 1) {
           map.current.setCenter(bounds.getCenter());

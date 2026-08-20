@@ -16,6 +16,7 @@ create table if not exists people (
   note text,
   rat_chat boolean default false,        -- is she in the rat chat
   axed boolean default false,            -- her photo shows up smashed
+  wingman boolean default false,         -- he's who you bring, not who you ask
   archived boolean default false,
   created_at timestamptz default now()
 );
@@ -30,6 +31,8 @@ alter table people add column if not exists lng double precision;
 alter table people add column if not exists photos jsonb default '[]'::jsonb;
 alter table people add column if not exists photos_synced_at timestamptz;
 alter table people add column if not exists axed boolean default false;
+-- who you bring rather than who you ask — kept out of every counter
+alter table people add column if not exists wingman boolean default false;
 
 create table if not exists invites (
   id uuid primary key default gen_random_uuid(),
