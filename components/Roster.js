@@ -14,7 +14,7 @@ import {
   Moon,
   SunMoon,
   X,
-  ArrowUpDown,
+  ListFilter,
   Check,
 } from 'lucide-react';
 import Avatar from './Avatar';
@@ -360,13 +360,16 @@ export default function Roster(props) {
                 fontSize: condensed ? 18 : 22,
                 letterSpacing: '-0.035em',
                 fontWeight: 700,
+                // it is two words and it is the name of the app: it gets one
+                // line. The row makes room below rather than folding it in half
+                whiteSpace: 'nowrap',
                 transition: 'font-size 160ms ease',
               }}
             >
               The Deck
             </h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {/* the way back to the field, and only on the tab it filters */}
             {tab === 'deck' && (
               <button
@@ -396,9 +399,10 @@ export default function Roster(props) {
                 background: 'transparent',
                 padding: 0,
                 fontFamily: 'var(--mono), monospace',
-                fontSize: 10.5,
-                letterSpacing: '0.08em',
+                fontSize: 10,
+                letterSpacing: '0.05em',
                 textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
                 color: showStats ? C.accent : owed ? 'var(--bad)' : C.muted,
               }}
             >
@@ -552,74 +556,223 @@ export default function Roster(props) {
           </div>
         </div>
 
-        {/* Two halves of the same thing: who you could ask, and what came of
-            it. The pill sits directly under the title so switching is the
-            first move available, not something buried in a menu. */}
+        {/* Deck, Map, Events, and — on the deck — the two controls that act
+            on the list, all on one line. They used to have a row to
+            themselves, which cost a sticky header its height on every screen
+            to hold one chip and a toggle. The sort lost its label to get here;
+            the label wasn't wasted, it just moved inside the menu where the
+            other four options already live. */}
         <div
           style={{
+            position: 'relative',
             display: 'flex',
-            gap: 3,
+            alignItems: 'center',
+            gap: 8,
             marginTop: condensed ? 7 : 10,
-            padding: 2.5,
-            borderRadius: 999,
-            background: 'var(--segment)',
             transition: 'margin-top 160ms ease',
           }}
         >
-          {[
-            { id: 'deck', label: 'Deck', count: rows.length },
-            { id: 'map', label: 'Map', count: placedCount },
-            { id: 'events', label: 'Events', count: events.length },
-          ].map((t) => {
-            const on = tab === t.id;
-            return (
+          <div
+            style={{
+              display: 'flex',
+              gap: 3,
+              padding: 2.5,
+              borderRadius: 999,
+              background: 'var(--segment)',
+              // takes what's left after the controls, and is allowed to shrink
+              // — without this the pill refuses to give ground and pushes the
+              // toggle off the right edge on a narrow phone
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
+            {[
+              { id: 'deck', label: 'Deck', count: rows.length },
+              { id: 'map', label: 'Map', count: placedCount },
+              { id: 'events', label: 'Events', count: events.length },
+            ].map((t) => {
+              const on = tab === t.id;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  aria-pressed={on}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    padding: condensed ? '5px 0' : '7px 0',
+                    borderRadius: 999,
+                    border: 'none',
+                    background: on ? C.surface : 'transparent',
+                    color: on ? C.ink : C.muted,
+                    fontSize: 13,
+                    fontWeight: on ? 650 : 500,
+                    whiteSpace: 'nowrap',
+                    boxShadow: on ? '0 1px 3px var(--shadow-lift)' : 'none',
+                    // one declaration: a second `transition` key would silently
+                    // replace this one and the condense would snap rather than run
+                    transition: 'padding 160ms ease, background 160ms ease, color 160ms ease',
+                  }}
+                >
+                  {t.label}
+                  {t.count > 0 && (
+                    <span
+                      style={{
+                        marginLeft: 5,
+                        fontFamily: 'var(--mono), monospace',
+                        fontSize: 10.5,
+                        color: on ? C.accent : C.muted,
+                      }}
+                    >
+                      {t.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* both of these act on the deck; the map and the events list have
+              their own shape and neither applies to them */}
+          {tab === 'deck' && (
+            <>
+              {/* No label on it any more, so the icon has to carry the state:
+                  it takes the accent whenever you're on something other than
+                  the sort the app opens with, which is the only time "what am
+                  I sorted by" is a question worth asking. The answer is one
+                  tap away and written out in full. */}
               <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                aria-pressed={on}
+                onClick={() => setSortOpen((v) => !v)}
+                aria-expanded={sortOpen}
+                aria-haspopup="listbox"
+                aria-label={`Sort — ${SORTS.find((x) => x.id === sort)?.label}`}
+                title={`Sort — ${SORTS.find((x) => x.id === sort)?.label}`}
                 style={{
-                  flex: 1,
-                  padding: condensed ? '5px 0' : '7px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  width: 32,
+                  height: 32,
+                  padding: 0,
                   borderRadius: 999,
-                  border: 'none',
-                  background: on ? C.surface : 'transparent',
-                  color: on ? C.ink : C.muted,
-                  fontSize: 13.5,
-                  fontWeight: on ? 650 : 500,
-                  boxShadow: on ? '0 1px 3px var(--shadow-lift)' : 'none',
-                  // one declaration: a second `transition` key would silently
-                  // replace this one and the condense would snap rather than run
-                  transition: 'padding 160ms ease, background 160ms ease, color 160ms ease',
+                  border: `1px solid ${sortOpen || sort !== SORTS[0].id ? C.accent : C.line}`,
+                  background: sortOpen ? 'var(--accent-tint)' : C.surface,
+                  color: sortOpen || sort !== SORTS[0].id ? C.accent : C.muted,
+                  transition: 'background 170ms ease, color 170ms ease, border-color 170ms ease',
                 }}
               >
-                {t.label}
-                {t.count > 0 && (
-                  <span
+                <ListFilter size={15} />
+              </button>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 3,
+                  padding: 3,
+                  borderRadius: 999,
+                  background: 'var(--segment)',
+                  flexShrink: 0,
+                }}
+              >
+                {[
+                  { id: 'grid', Icon: LayoutGrid, label: 'Grid view' },
+                  { id: 'list', Icon: Rows3, label: 'List view' },
+                ].map(({ id, Icon, label }) => {
+                  const on = view === id;
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => chooseView(id)}
+                      aria-label={label}
+                      aria-pressed={on}
+                      title={label}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '5px 8px',
+                        borderRadius: 999,
+                        border: 'none',
+                        background: on ? C.surface : 'transparent',
+                        color: on ? C.accent : C.muted,
+                        boxShadow: on ? '0 1px 3px var(--shadow)' : 'none',
+                        transition: 'background 170ms ease, color 170ms ease',
+                      }}
+                    >
+                      <Icon size={15} />
+                    </button>
+                  );
+                })}
+              </div>
+
+              {sortOpen && (
+                <>
+                  {/* tap anywhere else to put it away */}
+                  <div
+                    onClick={() => setSortOpen(false)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 8 }}
+                  />
+                  {/* hung off the right, under the button that opened it —
+                      this is where the sort's name lives now, so it says all
+                      five in full rather than abbreviating the one you're on */}
+                  <div
+                    role="listbox"
                     style={{
-                      marginLeft: 6,
-                      fontFamily: 'var(--mono), monospace',
-                      fontSize: 10.5,
-                      color: on ? C.accent : C.muted,
+                      position: 'absolute',
+                      top: 'calc(100% + 6px)',
+                      right: 0,
+                      zIndex: 9,
+                      minWidth: 170,
+                      background: C.surface,
+                      border: `1px solid ${C.line}`,
+                      borderRadius: 14,
+                      boxShadow: '0 12px 34px var(--shadow-lift)',
+                      overflow: 'hidden',
                     }}
                   >
-                    {t.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                    {SORTS.map((x) => {
+                      const on = x.id === sort;
+                      return (
+                        <button
+                          key={x.id}
+                          role="option"
+                          aria-selected={on}
+                          onClick={() => {
+                            setSort(x.id);
+                            setSortOpen(false);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            width: '100%',
+                            padding: '10px 13px',
+                            border: 'none',
+                            background: on ? 'var(--accent-tint)' : 'transparent',
+                            color: on ? C.accent : C.ink,
+                            fontSize: 13.5,
+                            fontWeight: on ? 650 : 500,
+                            textAlign: 'left',
+                          }}
+                        >
+                          <Check size={14} style={{ opacity: on ? 1 : 0, flexShrink: 0 }} />
+                          {x.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
 
-        {/* searching and sorting are about the deck; the events list has its
-            own shape and neither applies to it */}
-        {tab === 'deck' && (
-          <>
         {/* Tucked away until asked for. With a deck this size you scroll to
             find someone far more often than you type — the field was taking a
             permanent row to solve an occasional problem. It stays open while
             there's a query in it, so a filtered list always shows its cause. */}
-        {(searchOpen || q) && (
-          <div style={{ position: 'relative', marginTop: 12 }}>
+        {tab === 'deck' && (searchOpen || q) && (
+          <div style={{ position: 'relative', marginTop: 9 }}>
             <Search
               size={15}
               color={C.muted}
@@ -658,154 +811,6 @@ export default function Roster(props) {
               <X size={15} />
             </button>
           </div>
-        )}
-
-        {/* Five chips in a scroller with a toggle floating on top of them was
-            two controls fighting over one row: the last sorts were off-screen
-            and the toggle sat on whatever was under it. One button that names
-            the current sort says more in less space — you can read the state
-            without scrolling to find which chip is filled — and it leaves the
-            toggle a place to sit that isn't on top of something. Same height. */}
-        <div
-          style={{
-            position: 'relative',
-            marginTop: condensed ? 7 : 9,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            transition: 'margin-top 160ms ease',
-          }}
-        >
-          <button
-            onClick={() => setSortOpen((v) => !v)}
-            aria-expanded={sortOpen}
-            aria-haspopup="listbox"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 10px 6px 12px',
-              borderRadius: 999,
-              border: `1px solid ${sortOpen ? C.accent : C.line}`,
-              background: C.surface,
-              color: C.ink,
-              fontSize: 12.5,
-              fontWeight: 600,
-              flexShrink: 0,
-            }}
-          >
-            <ArrowUpDown size={13} color={C.muted} />
-            {SORTS.find((s) => s.id === sort)?.label}
-            <ChevronDown
-              size={13}
-              color={C.muted}
-              style={{
-                transform: sortOpen ? 'rotate(180deg)' : 'none',
-                transition: 'transform 180ms ease',
-              }}
-            />
-          </button>
-
-          <div style={{ flex: 1 }} />
-
-          {/* now inline, because there's room for it — no glass, no overlap */}
-          <div
-            style={{
-              display: 'flex',
-              gap: 3,
-              padding: 3,
-              borderRadius: 999,
-              background: 'var(--segment)',
-              flexShrink: 0,
-            }}
-          >
-            {[
-              { id: 'grid', Icon: LayoutGrid, label: 'Grid view' },
-              { id: 'list', Icon: Rows3, label: 'List view' },
-            ].map(({ id, Icon, label }) => {
-              const on = view === id;
-              return (
-                <button
-                  key={id}
-                  onClick={() => chooseView(id)}
-                  aria-label={label}
-                  aria-pressed={on}
-                  title={label}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '5px 9px',
-                    borderRadius: 999,
-                    border: 'none',
-                    background: on ? C.surface : 'transparent',
-                    color: on ? C.accent : C.muted,
-                    boxShadow: on ? '0 1px 3px var(--shadow)' : 'none',
-                    transition: 'background 170ms ease, color 170ms ease',
-                  }}
-                >
-                  <Icon size={15} />
-                </button>
-              );
-            })}
-          </div>
-
-          {sortOpen && (
-            <>
-              {/* tap anywhere else to put it away */}
-              <div
-                onClick={() => setSortOpen(false)}
-                style={{ position: 'fixed', inset: 0, zIndex: 8 }}
-              />
-              <div
-                role="listbox"
-                style={{
-                  position: 'absolute',
-                  top: 38,
-                  left: 0,
-                  zIndex: 9,
-                  minWidth: 170,
-                  background: C.surface,
-                  border: `1px solid ${C.line}`,
-                  borderRadius: 14,
-                  boxShadow: '0 12px 34px var(--shadow-lift)',
-                  overflow: 'hidden',
-                }}
-              >
-                {SORTS.map((s) => {
-                  const on = s.id === sort;
-                  return (
-                    <button
-                      key={s.id}
-                      role="option"
-                      aria-selected={on}
-                      onClick={() => {
-                        setSort(s.id);
-                        setSortOpen(false);
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        width: '100%',
-                        padding: '10px 13px',
-                        border: 'none',
-                        background: on ? 'var(--accent-tint)' : 'transparent',
-                        color: on ? C.accent : C.ink,
-                        fontSize: 13.5,
-                        fontWeight: on ? 650 : 500,
-                        textAlign: 'left',
-                      }}
-                    >
-                      <Check size={14} style={{ opacity: on ? 1 : 0, flexShrink: 0 }} />
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </div>
-          </>
         )}
       </header>
 
