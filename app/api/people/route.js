@@ -48,8 +48,28 @@ function sanitize(body) {
       return { lat: paired ? lat : null, lng: paired ? lng : null };
     })(),
     rat_chat: !!body.rat_chat,
+    axed: !!body.axed,
     archived: !!body.archived,
   };
+}
+
+// `axed` arrived after some databases did (see supabase/axe.sql). A column
+// that isn't there yet fails the whole write, which would mean one unrun
+// migration silently breaking every save in the app — so the write is retried
+// without it and the client is told, rather than her name and note being lost
+// on the way to a smashed photo.
+function axeColumnMissing(error) {
+  const said = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`;
+  return /axed/.test(said) && /(column|schema cache)/i.test(said);
+}
+
+// Runs the write, and runs it again without the axe if that's what stopped it.
+async function write(run, row) {
+  const res = await run(row);
+  if (!res.error || !axeColumnMissing(res.error)) return { res, axeMissing: false };
+  const rest = { ...row };
+  delete rest.axed;
+  return { res: await run(rest), axeMissing: true };
 }
 
 // insert when there's no id, update when there is. Returns the id either way so
@@ -63,11 +83,10 @@ export async function POST(req) {
   }
 
   if (!body.id) {
-    const res = await supabaseAdmin
-      .from('people')
-      .insert({ ...row, created_by: await actorName(req) })
-      .select('id')
-      .single();
+    const { res, axeMissing } = await write(
+      (r) => supabaseAdmin.from('people').insert(r).select('id').single(),
+      { ...row, created_by: await actorName(req) }
+    );
 
     if (res.error) {
       return NextResponse.json({ error: res.error.message }, { status: 500, headers: NO_STORE });
@@ -78,7 +97,10 @@ export async function POST(req) {
       person_id: res.data.id,
       detail: `Added ${row.name}`,
     });
-    return NextResponse.json({ id: res.data.id }, { headers: NO_STORE });
+    return NextResponse.json(
+      { id: res.data.id, ...(axeMissing && { axe: 'missing' }) },
+      { headers: NO_STORE }
+    );
   }
 
   // Read first, so the log can say what changed rather than that something did.
@@ -90,7 +112,10 @@ export async function POST(req) {
     .eq('id', body.id)
     .maybeSingle();
 
-  const res = await supabaseAdmin.from('people').update(row).eq('id', body.id).select('id').single();
+  const { res, axeMissing } = await write(
+    (r) => supabaseAdmin.from('people').update(r).eq('id', body.id).select('id').single(),
+    row
+  );
   if (res.error) {
     return NextResponse.json({ error: res.error.message }, { status: 500, headers: NO_STORE });
   }
@@ -103,6 +128,17 @@ export async function POST(req) {
         subject: row.name,
         person_id: body.id,
         detail: row.archived ? `Archived ${row.name}` : `Brought ${row.name} back`,
+      });
+    }
+
+    // The axe is a thing done to her, not a field she has — "Jon updated her
+    // axe" would be a poor description of taking one to her face.
+    if (!axeMissing && !before.axed !== !row.axed) {
+      await logActivity(req, {
+        action: row.axed ? 'person.axe' : 'person.unaxe',
+        subject: row.name,
+        person_id: body.id,
+        detail: row.axed ? `Took the axe to ${row.name}'s photo` : `Pulled the axe out of ${row.name}'s photo`,
       });
     }
 
@@ -127,7 +163,10 @@ export async function POST(req) {
     }
   }
 
-  return NextResponse.json({ id: res.data.id }, { headers: NO_STORE });
+  return NextResponse.json(
+    { id: res.data.id, ...(axeMissing && { axe: 'missing' }) },
+    { headers: NO_STORE }
+  );
 }
 
 export async function DELETE(req) {
