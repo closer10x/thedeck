@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function GET(req) {
     // setup step and not a fault — say which, so the panel can explain itself.
     const missing = /relation .*activity.* does not exist|schema cache/i.test(error.message);
     return NextResponse.json(
-      { error: error.message, missing },
+      { error: saidPlainly(error), missing },
       { status: missing ? 200 : 500, headers: NO_STORE }
     );
   }

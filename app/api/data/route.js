@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 import { currentUser } from '../../../lib/lock';
 
 export const runtime = 'nodejs';
@@ -25,7 +25,7 @@ export async function GET(req) {
 
   const error = p.error || i.error;
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500, headers: NO_STORE });
   }
   return NextResponse.json(
     {

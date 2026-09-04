@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -38,7 +38,7 @@ export async function GET(req) {
   if (error) {
     // the columns not existing yet is a setup step, not a fault
     const missing = /column .*(lat|lng|city).* does not exist|schema cache/i.test(error.message);
-    return NextResponse.json({ error: error.message, missing }, { status: missing ? 503 : 500 });
+    return NextResponse.json({ error: saidPlainly(error), missing }, { status: missing ? 503 : 500 });
   }
 
   const pins = (data || []).filter((p) => !p.archived).slice(0, MAX_PINS);

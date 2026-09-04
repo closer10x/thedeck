@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 import { actorName } from '../../../lib/lock';
 import { logActivity, changedFields, andList } from '../../../lib/audit';
 
@@ -58,7 +58,7 @@ export async function GET() {
   if (error) {
     const missing = isMissing(error.message);
     return NextResponse.json(
-      { error: error.message, missing },
+      { error: saidPlainly(error), missing },
       { status: missing ? 200 : 500, headers: NO_STORE }
     );
   }
@@ -86,7 +86,7 @@ export async function POST(req) {
     if (res.error) {
       const missing = isMissing(res.error.message);
       return NextResponse.json(
-        { error: res.error.message, missing },
+        { error: saidPlainly(res.error), missing },
         { status: missing ? 400 : 500, headers: NO_STORE }
       );
     }
@@ -108,7 +108,7 @@ export async function POST(req) {
 
   const res = await supabaseAdmin.from('events').update(row).eq('id', body.id).select('id').single();
   if (res.error) {
-    return NextResponse.json({ error: res.error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(res.error) }, { status: 500, headers: NO_STORE });
   }
 
   if (before) {
@@ -141,7 +141,7 @@ export async function DELETE(req) {
 
   const { error } = await supabaseAdmin.from('events').delete().eq('id', id);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500, headers: NO_STORE });
   }
 
   const name = event?.name || 'an event';

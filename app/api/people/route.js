@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 import { actorName } from '../../../lib/lock';
 import { logActivity, changedFields, andList, FIELD_LABELS } from '../../../lib/audit';
 
@@ -112,7 +112,7 @@ export async function POST(req) {
     );
 
     if (res.error) {
-      return NextResponse.json({ error: res.error.message }, { status: 500, headers: NO_STORE });
+      return NextResponse.json({ error: saidPlainly(res.error) }, { status: 500, headers: NO_STORE });
     }
     await logActivity(req, {
       action: 'person.add',
@@ -140,7 +140,7 @@ export async function POST(req) {
     row
   );
   if (res.error) {
-    return NextResponse.json({ error: res.error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(res.error) }, { status: 500, headers: NO_STORE });
   }
 
   if (before) {
@@ -207,7 +207,7 @@ export async function DELETE(req) {
 
   const { error } = await supabaseAdmin.from('people').delete().eq('id', id);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500, headers: NO_STORE });
   }
 
   const name = person?.name || 'someone';

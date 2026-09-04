@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 import { logActivity } from '../../../lib/audit';
 
 export const runtime = 'nodejs';
@@ -33,7 +33,7 @@ export async function POST(req) {
     .upload(path, buf, { contentType: file.type, upsert: true });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500 });
   }
 
   const { data } = supabaseAdmin.storage.from('avatars').getPublicUrl(path);

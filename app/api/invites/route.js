@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '../../../lib/supabaseAdmin';
+import { supabaseAdmin, saidPlainly } from '../../../lib/supabaseAdmin';
 import { actorName } from '../../../lib/lock';
 import { logActivity } from '../../../lib/audit';
 
@@ -41,7 +41,7 @@ export async function POST(req) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500, headers: NO_STORE });
   }
 
   const name = await nameOf(person_id);
@@ -83,7 +83,7 @@ export async function PATCH(req) {
 
   const { error } = await supabaseAdmin.from('invites').update(patch).eq('id', id);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500, headers: NO_STORE });
   }
 
   if (before) {
@@ -127,7 +127,7 @@ export async function DELETE(req) {
 
   const { error } = await supabaseAdmin.from('invites').delete().eq('id', id);
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500, headers: NO_STORE });
+    return NextResponse.json({ error: saidPlainly(error) }, { status: 500, headers: NO_STORE });
   }
 
   if (before) {
