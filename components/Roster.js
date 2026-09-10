@@ -388,13 +388,22 @@ export default function Roster(props) {
                 <Search size={16} />
               </button>
             )}
+            {/* It says what it opens rather than reciting two of the numbers
+                inside it. The count and the debt are both in the panel — on
+                deck is the first tile, owed is "gone cold" — so the header was
+                spending its width previewing its own contents.
+
+                It keeps the red, though. That was never about the number: it
+                means there are people in here you owe a call, and it's the one
+                reason to open this without being asked. */}
             <button
               onClick={() => setShowStats((v) => !v)}
-              title={showStats ? 'Hide stats' : 'Show stats'}
+              title={showStats ? 'Hide analytics' : 'Show analytics'}
+              aria-expanded={showStats}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 6,
+                gap: 5,
                 border: 'none',
                 background: 'transparent',
                 padding: 0,
@@ -406,7 +415,7 @@ export default function Roster(props) {
                 color: showStats ? C.accent : owed ? 'var(--bad)' : C.muted,
               }}
             >
-              {counted.length} on deck · {owed} owed
+              Analytics
               <ChevronDown
                 size={13}
                 style={{
